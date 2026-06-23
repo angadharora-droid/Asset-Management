@@ -1,7 +1,8 @@
 import { useRef, useState } from 'react';
 import { compressImage } from '../../utils/image.js';
 import { useToast } from '../../context/ToastContext.jsx';
-import { IconCamera, IconClose, IconPlus } from '../Icon.jsx';
+import { IconCamera, IconClose, IconImage } from '../Icon.jsx';
+import CameraCapture from './CameraCapture.jsx';
 
 // Suggested photo names — auto-assigned in order as photos are added, offered
 // as dropdown suggestions, and fully editable (type any custom name).
@@ -25,7 +26,20 @@ export default function PhotoUploader({ value = [], onChange, requireOne = false
   const inputRef = useRef(null);
   const showToast = useToast();
   const [busy, setBusy] = useState(false);
+  const [camOpen, setCamOpen] = useState(false);
   const missing = requireOne && value.length === 0;
+
+  // Append already-compressed data URLs (from the camera or a file read),
+  // auto-naming each in order from the suggestion list.
+  function appendDataUrls(urls) {
+    if (!urls.length) return;
+    const added = urls.map((dataUrl, k) => ({
+      dataUrl,
+      caption: PHOTO_LABELS[value.length + k] || '',
+    }));
+    onChange([...value, ...added]);
+    showToast(`${added.length} photo${added.length > 1 ? 's' : ''} added`, 'success');
+  }
 
   async function handleFiles(e) {
     const files = Array.from(e.target.files || []);
@@ -33,19 +47,11 @@ export default function PhotoUploader({ value = [], onChange, requireOne = false
     if (!files.length) return;
     setBusy(true);
     try {
-      const added = [];
+      const urls = [];
       for (const f of files) {
-        if (!f.type.startsWith('image/')) continue;
-        const idx = value.length + added.length;
-        added.push({
-          dataUrl: await compressImage(f, 1000, 0.7),
-          caption: PHOTO_LABELS[idx] || '',
-        });
+        if (f.type.startsWith('image/')) urls.push(await compressImage(f, 1000, 0.7));
       }
-      if (added.length) {
-        onChange([...value, ...added]);
-        showToast(`${added.length} photo${added.length > 1 ? 's' : ''} added`, 'success');
-      }
+      appendDataUrls(urls);
     } catch {
       showToast('Could not process an image', 'error');
     } finally {
@@ -96,21 +102,39 @@ export default function PhotoUploader({ value = [], onChange, requireOne = false
         </div>
       )}
 
-      <button
-        type="button"
-        onClick={() => inputRef.current?.click()}
-        disabled={busy}
-        className={[
-          'w-full rounded-lg border-[1.5px] border-dashed py-3 flex items-center justify-center gap-2 text-[13px] font-semibold transition-colors',
-          'focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-light',
-          missing
-            ? 'border-damaged bg-damaged-bg text-damaged'
-            : 'border-line bg-cream/60 text-navy hover:border-gold hover:bg-cream',
-        ].join(' ')}
-      >
-        {value.length ? <IconPlus size={17} /> : <IconCamera size={18} />}
-        {busy ? 'Adding…' : value.length ? 'Add more photos' : 'Add photo'}
-      </button>
+      <div className="grid grid-cols-2 gap-2.5">
+        <button
+          type="button"
+          onClick={() => setCamOpen(true)}
+          disabled={busy}
+          className={[
+            'rounded-lg border-[1.5px] border-dashed py-3 flex items-center justify-center gap-2 text-[13px] font-semibold transition-colors',
+            'focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-light disabled:opacity-50',
+            missing
+              ? 'border-damaged bg-damaged-bg text-damaged'
+              : 'border-line bg-cream/60 text-navy hover:border-gold hover:bg-cream',
+          ].join(' ')}
+        >
+          <IconCamera size={18} />
+          Take photo
+        </button>
+
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          disabled={busy}
+          className={[
+            'rounded-lg border-[1.5px] border-dashed py-3 flex items-center justify-center gap-2 text-[13px] font-semibold transition-colors',
+            'focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-light disabled:opacity-50',
+            missing
+              ? 'border-damaged bg-damaged-bg text-damaged'
+              : 'border-line bg-cream/60 text-navy hover:border-gold hover:bg-cream',
+          ].join(' ')}
+        >
+          <IconImage size={18} />
+          {busy ? 'Adding…' : 'Upload'}
+        </button>
+      </div>
 
       <input
         ref={inputRef}
@@ -125,6 +149,13 @@ export default function PhotoUploader({ value = [], onChange, requireOne = false
         <div className="text-[12px] text-damaged mt-2">
           At least one photo is required because the condition is Damaged.
         </div>
+      )}
+
+      {camOpen && (
+        <CameraCapture
+          onCapture={appendDataUrls}
+          onClose={() => setCamOpen(false)}
+        />
       )}
     </div>
   );
