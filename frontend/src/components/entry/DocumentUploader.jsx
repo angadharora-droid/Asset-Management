@@ -1,11 +1,19 @@
 import { useRef, useState } from 'react';
 import { compressImage } from '../../utils/image.js';
 import { useToast } from '../../context/ToastContext.jsx';
-import { IconFile, IconImage, IconClose, IconPlus } from '../Icon.jsx';
+import { IconFile, IconImage, IconClose, IconPlus, IconCamera } from '../Icon.jsx';
 import { selectCls } from '../ui.jsx';
+import CameraCapture from './CameraCapture.jsx';
 
 export const DOC_TYPES = ['Invoice / Bill', 'Warranty', 'AMC', 'Manual / Datasheet', 'Other'];
 const MAX_PDF_MB = 5;
+
+// Rough byte size of a base64 data URL, for the file-size label on scans.
+function dataUrlSize(dataUrl = '') {
+  const i = dataUrl.indexOf(',');
+  const b64 = i >= 0 ? dataUrl.slice(i + 1) : dataUrl;
+  return Math.round((b64.length * 3) / 4);
+}
 
 function guessType(name = '') {
   const n = name.toLowerCase();
@@ -36,6 +44,22 @@ export default function DocumentUploader({ value = [], onChange }) {
   const inputRef = useRef(null);
   const showToast = useToast();
   const [busy, setBusy] = useState(false);
+  const [camOpen, setCamOpen] = useState(false);
+
+  // Camera shots come back as compressed JPEG data URLs — wrap each as an
+  // image document so scanned bills/warranties sit alongside uploaded files.
+  function appendScans(urls) {
+    if (!urls.length) return;
+    const added = urls.map((dataUrl, k) => ({
+      name: `Scan ${value.length + k + 1}.jpg`,
+      type: 'Invoice / Bill',
+      mime: 'image/jpeg',
+      size: dataUrlSize(dataUrl),
+      dataUrl,
+    }));
+    onChange([...value, ...added]);
+    showToast(`${added.length} scan${added.length > 1 ? 's' : ''} added`, 'success');
+  }
 
   async function handleFiles(e) {
     const files = Array.from(e.target.files || []);
@@ -127,18 +151,35 @@ export default function DocumentUploader({ value = [], onChange }) {
         </div>
       )}
 
-      <button
-        type="button"
-        onClick={() => inputRef.current?.click()}
-        disabled={busy}
-        className="w-full rounded-lg border-[1.5px] border-dashed border-line bg-cream/60 text-navy hover:border-gold hover:bg-cream
-                   transition-colors py-3 flex items-center justify-center gap-2 text-[13px] font-semibold
-                   focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-light"
-      >
-        <IconPlus size={17} /> {busy ? 'Adding…' : 'Add bill / warranty / AMC / document'}
-      </button>
+      <div className="text-[11.5px] text-muted mb-2">Photograph a bill, warranty or AMC — or upload an image / PDF.</div>
+
+      <div className="grid grid-cols-2 gap-2.5">
+        <button
+          type="button"
+          onClick={() => setCamOpen(true)}
+          disabled={busy}
+          className="rounded-lg border-[1.5px] border-dashed border-line bg-cream/60 text-navy hover:border-gold hover:bg-cream
+                     transition-colors py-3 flex items-center justify-center gap-2 text-[13px] font-semibold
+                     focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-light disabled:opacity-50"
+        >
+          <IconCamera size={18} /> Scan
+        </button>
+
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          disabled={busy}
+          className="rounded-lg border-[1.5px] border-dashed border-line bg-cream/60 text-navy hover:border-gold hover:bg-cream
+                     transition-colors py-3 flex items-center justify-center gap-2 text-[13px] font-semibold
+                     focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-light disabled:opacity-50"
+        >
+          <IconPlus size={17} /> {busy ? 'Adding…' : 'Upload file'}
+        </button>
+      </div>
 
       <input ref={inputRef} type="file" accept="image/*,application/pdf" multiple className="hidden" onChange={handleFiles} />
+
+      {camOpen && <CameraCapture onCapture={appendScans} onClose={() => setCamOpen(false)} />}
     </div>
   );
 }
