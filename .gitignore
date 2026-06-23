@@ -1,0 +1,14 @@
+node_modules/
+dist/
+
+# Local agent / editor tooling config (may contain machine-specific data)
+.claude/
+
+# Environment files — never commit secrets OR example templates
+.env
+.env.*
+*.env
+.env.example
+
+*.log
+.DS_Store
