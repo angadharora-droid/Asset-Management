@@ -1,0 +1,221 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --ring: #d8a94f;
+  }
+
+  html,
+  body {
+    margin: 0;
+    padding: 0;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-cream text-ink font-sans antialiased;
+    font-size: 15px;
+    line-height: 1.5;
+    -webkit-tap-highlight-color: transparent;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1,
+  h2,
+  h3 {
+    @apply font-serif text-navy;
+    font-weight: 600;
+    margin: 0;
+    letter-spacing: -0.015em;
+  }
+
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
+
+  :where(a, button, input, select, textarea, [tabindex]):focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  textarea {
+    min-height: 64px;
+    resize: vertical;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #cdc6b6 transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 9px;
+    height: 9px;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: #d4cebd;
+    border-radius: 9px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background: #c2b9a2;
+    background-clip: content-box;
+  }
+}
+
+@layer components {
+  /* Cream content field with a faint dot-grid + soft gold wash — gives the
+     page a printed-paper feel instead of flat white. */
+  .paper-bg {
+    background-color: #faf7f1;
+    background-image:
+      radial-gradient(120% 80% at 100% 0%, rgba(216, 169, 79, 0.1) 0%, transparent 45%),
+      radial-gradient(circle at 1px 1px, rgba(22, 49, 63, 0.045) 1px, transparent 0);
+    background-size: 100% 100%, 22px 22px;
+    background-attachment: fixed, fixed;
+  }
+
+  /* Deep-navy sidebar / hero with a faint engraved sheen. */
+  .ink-panel {
+    background-color: #102530;
+    background-image:
+      radial-gradient(80% 60% at 100% 0%, rgba(216, 169, 79, 0.16) 0%, transparent 55%),
+      linear-gradient(180deg, #16313f 0%, #102530 100%);
+  }
+
+  /* Hairline gold rule used under eyebrows / headings. */
+  .gold-rule {
+    height: 2px;
+    width: 34px;
+    background: linear-gradient(90deg, #b8862f, #d8a94f);
+    border-radius: 2px;
+  }
+
+  /* Custom-styled native select (replaces the default OS chevron). */
+  .select-field {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2316313F' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 11px center;
+    padding-right: 34px;
+  }
+
+  .skeleton {
+    @apply relative overflow-hidden bg-line/60 rounded-md;
+  }
+  .skeleton::after {
+    content: '';
+    @apply absolute inset-0 -translate-x-full;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.65), transparent);
+    animation: shimmer 1.4s infinite;
+  }
+}
+
+/* The sign-off prints as a formal landscape document with comfortable margins.
+   Named so it does not affect the (portrait) barcode-label sheet. */
+@page signoff {
+  size: A4 landscape;
+  margin: 12mm 14mm 14mm;
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #signoff-print,
+  #signoff-print *,
+  #labels-print,
+  #labels-print * {
+    visibility: visible;
+  }
+  #signoff-print,
+  #labels-print {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    padding: 0;
+  }
+
+  /* Keep the navy table header, condition dots and brand colours in the PDF. */
+  #signoff-print {
+    page: signoff;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    color-adjust: exact;
+    font-size: 10px;
+  }
+  #signoff-print h2 {
+    font-size: 18px;
+  }
+
+  /* CRITICAL: the table lives in a horizontal scroll container on screen.
+     Without this, the off-screen right-hand columns (Accepted, Date) are
+     clipped and never printed. Unclip it and shrink the table to fit the page
+     so every column prints, in portrait or landscape. */
+  #signoff-print .signoff-tablewrap {
+    overflow: visible !important;
+  }
+  #signoff-print .signoff-table {
+    width: 100% !important;
+    min-width: 0 !important;
+    table-layout: fixed;
+    font-size: 8.5px !important;
+  }
+  #signoff-print .signoff-table th,
+  #signoff-print .signoff-table td {
+    padding: 3px 4px !important;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+  }
+  #signoff-print .signoff-table thead th {
+    font-size: 7.5px !important;
+  }
+  /* Let long code ranges wrap rather than overflow their column. */
+  #signoff-print .signoff-table .whitespace-nowrap {
+    white-space: normal !important;
+  }
+
+  /* Repeat the column header on every printed page and never split a row. */
+  #signoff-print thead {
+    display: table-header-group;
+  }
+  #signoff-print tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  #signoff-print table {
+    break-inside: auto;
+  }
+  /* Keep signature / authorisation blocks intact across page breaks. */
+  #signoff-print .sig-block {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .skeleton::after {
+    animation: none;
+  }
+}
