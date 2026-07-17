@@ -120,10 +120,17 @@
 }
 
 /* The sign-off prints as a formal landscape document with comfortable margins.
-   Named so it does not affect the (portrait) barcode-label sheet. */
+   Named so it does not affect the barcode-label roll. */
 @page signoff {
   size: A4 landscape;
   margin: 12mm 14mm 14mm;
+}
+
+/* Barcode tags go to the portable thermal printer: one 2in × 1in die-cut label
+   per page, edge to edge. Named so it does not affect the sign-off. */
+@page labels {
+  size: 2in 1in;
+  margin: 0;
 }
 
 @media print {
@@ -141,8 +148,10 @@
     position: absolute;
     left: 0;
     top: 0;
-    width: 100%;
     padding: 0;
+  }
+  #signoff-print {
+    width: 100%;
   }
 
   /* Keep the navy table header, condition dots and brand colours in the PDF. */
@@ -199,6 +208,34 @@
   #signoff-print .sig-block {
     break-inside: avoid;
     page-break-inside: avoid;
+  }
+
+  /* Undo the on-screen preview wrapping so the tags stack one per page. */
+  #labels-print {
+    page: labels;
+    display: block;
+    max-width: none;
+    margin: 0;
+    gap: 0;
+  }
+  /* The thermal head is 1-bit — force pure black so the small type and the QR
+     are not dithered into mush. */
+  #labels-print,
+  #labels-print * {
+    color: #000 !important;
+    background: transparent !important;
+  }
+  /* One tag per page; the die-cut edge is the border, so drop the drawn one. */
+  #labels-print .tag {
+    border: 0;
+    border-radius: 0;
+    margin: 0;
+    break-after: page;
+    page-break-after: always;
+  }
+  #labels-print .tag:last-child {
+    break-after: auto;
+    page-break-after: auto;
   }
 
   .no-print {
