@@ -143,15 +143,12 @@
   #labels-print * {
     visibility: visible;
   }
-  #signoff-print,
-  #labels-print {
+  #signoff-print {
     position: absolute;
     left: 0;
     top: 0;
-    padding: 0;
-  }
-  #signoff-print {
     width: 100%;
+    padding: 0;
   }
 
   /* Keep the navy table header, condition dots and brand colours in the PDF. */
@@ -210,12 +207,27 @@
     page-break-inside: avoid;
   }
 
+  /* Tags must print in normal flow. Taking #labels-print out of flow makes
+     Chrome ignore the named `labels` page (silently falling back to A4), and a
+     `fixed` ancestor makes it drop the forced breaks — either one alone
+     collapses the whole roll onto one sheet. So rather than position over the
+     app, hide the app. Scoped to the class LabelSheet puts on <body> so the
+     sign-off keeps its own absolute layout. */
+  body.labels-open > *:not(#labels-root) {
+    display: none !important;
+  }
+  body.labels-open #labels-root {
+    position: static;
+    overflow: visible;
+  }
   /* Undo the on-screen preview wrapping so the tags stack one per page. */
   #labels-print {
     page: labels;
+    position: static;
     display: block;
     max-width: none;
     margin: 0;
+    padding: 0;
     gap: 0;
   }
   /* The thermal head is 1-bit — force pure black so the small type and the QR
