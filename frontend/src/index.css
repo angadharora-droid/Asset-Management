@@ -216,6 +216,13 @@
   body.labels-open > *:not(#labels-root) {
     display: none !important;
   }
+  /* The body's cream propagates to the page canvas, so it has to be cleared
+     here too — with "Background graphics" ticked the thermal head would dither
+     it to grey across the whole tag. */
+  body.labels-open,
+  body.labels-open #labels-root {
+    background: #fff;
+  }
   body.labels-open #labels-root {
     position: static;
     overflow: visible;
