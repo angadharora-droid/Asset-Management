@@ -7,7 +7,7 @@ import Qr from '../Qr.jsx';
 
 const MAX = 120; // labels rendered at a time
 
-// Printable barcode (QR) tags — one per unit, sized 2in × 1in for the portable
+// Printable barcode (QR) tags — one per unit, sized 50 × 20 mm for the portable
 // thermal label printer (one tag per page; see the `labels` @page rule).
 // Each QR opens the unit's read-only scan page; the label prints the key details.
 export default function LabelSheet({ asset, onClose }) {
@@ -81,8 +81,8 @@ export default function LabelSheet({ asset, onClose }) {
 
       <div className="no-print max-w-[820px] mx-auto px-4 pt-3 space-y-1">
         <div className="text-[12.5px] text-muted">
-          Tags print at 2 × 1 inch, one per label. In the print dialog choose the 2" × 1" label
-          stock and set margins to None.
+          Tags print at 50 × 20 mm, one per label. In the print dialog choose the 50 × 20 mm
+          label stock and set margins to None.
         </div>
         {truncated && (
           <div className="text-[12.5px] text-pending">
@@ -100,26 +100,29 @@ export default function LabelSheet({ asset, onClose }) {
               key={n}
               className="tag border border-line rounded-md bg-white flex items-center overflow-hidden"
               style={{
-                width: '2in',
-                height: '1in',
-                padding: '0.05in',
-                gap: '0.06in',
+                width: '50mm',
+                height: '20mm',
+                padding: '1.2mm',
+                gap: '1.5mm',
+                // The thermal head is 1-bit — the brand navy/grey would dither to
+                // mush at this size, so every line prints solid black.
+                color: '#000',
                 breakInside: 'avoid',
               }}
             >
-              <Qr value={scanUrl(asset, n)} size={83} res={4} className="flex-none" />
+              <Qr value={scanUrl(asset, n)} size={66} res={4} className="flex-none" />
               <div className="min-w-0 leading-tight">
-                <div className="font-mono font-bold text-navy tnum truncate" style={{ fontSize: '7pt' }}>
+                <div className="font-mono font-bold tnum truncate" style={{ fontSize: '8pt' }}>
                   {code}
                 </div>
-                <div className="font-semibold text-ink truncate" style={{ fontSize: '6.5pt' }}>
+                <div className="font-semibold truncate" style={{ fontSize: '7.5pt' }}>
                   {asset.name}
                 </div>
-                <div className="text-muted truncate" style={{ fontSize: '6pt' }}>{asset.department}</div>
-                <div className="text-muted truncate" style={{ fontSize: '6pt' }}>{asset.location}</div>
+                <div className="truncate" style={{ fontSize: '7pt' }}>{asset.department}</div>
+                <div className="truncate" style={{ fontSize: '7pt' }}>{asset.location}</div>
                 <div
-                  className="text-muted uppercase tracking-wider truncate"
-                  style={{ fontSize: '4.5pt', marginTop: '0.02in' }}
+                  className="uppercase tracking-wider truncate"
+                  style={{ fontSize: '5pt', marginTop: '0.3mm' }}
                 >
                   Centre Point Amravati
                 </div>
