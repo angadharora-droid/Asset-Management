@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { rangeCode, codeLabel, scanUrl, assetSegments } from '../../utils/asset.js';
+import { rangeCode, codeLabel, scanUrl } from '../../utils/asset.js';
 import { Btn } from '../ui.jsx';
 import { IconPrinter, IconClose } from '../Icon.jsx';
 import Qr from '../Qr.jsx';
 
-const MAX = 120; // labels rendered per sheet
+const MAX = 120; // labels rendered at a time
 
-// Printable barcode (QR) tags — one per unit. Each QR opens the unit's
-// read-only scan page; the label also prints the key details.
+// Printable barcode (QR) tags — one per unit, sized 2in × 1in for the portable
+// thermal label printer (one tag per page; see the `labels` @page rule).
+// Each QR opens the unit's read-only scan page; the label prints the key details.
 export default function LabelSheet({ asset, onClose }) {
   const lo = asset.seqStart || 1;
   const hi = asset.seqEnd || lo;
@@ -26,9 +27,6 @@ export default function LabelSheet({ asset, onClose }) {
       document.body.style.overflow = prev;
     };
   }, [onClose]);
-
-  const segs = assetSegments(asset);
-  const segFor = (n) => segs.find((s) => n >= s.from && n <= s.to);
 
   const start = Math.max(lo, Math.min(Number(from) || lo, hi));
   const end = Math.max(start, Math.min(Number(to) || hi, hi));
@@ -77,34 +75,49 @@ export default function LabelSheet({ asset, onClose }) {
         </div>
       </div>
 
-      {truncated && (
-        <div className="no-print max-w-[820px] mx-auto px-4 pt-3 text-[12.5px] text-pending">
-          Showing {MAX} tags per sheet — adjust the unit range above to print the rest.
+      <div className="no-print max-w-[820px] mx-auto px-4 pt-3 space-y-1">
+        <div className="text-[12.5px] text-muted">
+          Tags print at 2 × 1 inch, one per label. In the print dialog choose the 2" × 1" label
+          stock and set margins to None.
         </div>
-      )}
+        {truncated && (
+          <div className="text-[12.5px] text-pending">
+            Showing {MAX} tags at a time — adjust the unit range above to print the rest.
+          </div>
+        )}
+      </div>
 
-      {/* Printable label grid */}
-      <div id="labels-print" className="max-w-[820px] mx-auto p-4 grid grid-cols-2 gap-3">
+      {/* Printable labels — each box is exactly one 2in × 1in physical tag. */}
+      <div id="labels-print" className="max-w-[820px] mx-auto p-4 flex flex-wrap gap-3 justify-center">
         {units.map((n) => {
           const code = rangeCode(asset, n, n);
-          const seg = segFor(n);
           return (
             <div
               key={n}
-              className="border border-line rounded-lg p-3 flex gap-3 items-center bg-white"
-              style={{ breakInside: 'avoid' }}
+              className="tag border border-line rounded-md bg-white flex items-center overflow-hidden"
+              style={{
+                width: '2in',
+                height: '1in',
+                padding: '0.05in',
+                gap: '0.06in',
+                breakInside: 'avoid',
+              }}
             >
-              <Qr value={scanUrl(asset, n)} size={92} className="flex-none" />
-              <div className="min-w-0">
-                <div className="font-mono font-semibold text-navy text-[13px] tnum truncate">{code}</div>
-                <div className="text-[12px] font-semibold text-ink truncate">{asset.name}</div>
-                <div className="text-[11px] text-muted truncate">{asset.category}</div>
-                <div className="text-[11px] text-muted truncate">
-                  {asset.department} · {asset.location}
+              <Qr value={scanUrl(asset, n)} size={83} res={4} className="flex-none" />
+              <div className="min-w-0 leading-tight">
+                <div className="font-mono font-bold text-navy tnum truncate" style={{ fontSize: '7pt' }}>
+                  {code}
                 </div>
-                {seg && <div className="text-[10.5px] text-muted mt-0.5">{seg.status} · {seg.condition}</div>}
-                <div className="text-[9px] text-muted mt-1 uppercase tracking-wider">
-                  Centre Point Amravati · scan to view
+                <div className="font-semibold text-ink truncate" style={{ fontSize: '6.5pt' }}>
+                  {asset.name}
+                </div>
+                <div className="text-muted truncate" style={{ fontSize: '6pt' }}>{asset.department}</div>
+                <div className="text-muted truncate" style={{ fontSize: '6pt' }}>{asset.location}</div>
+                <div
+                  className="text-muted uppercase tracking-wider truncate"
+                  style={{ fontSize: '4.5pt', marginTop: '0.02in' }}
+                >
+                  Centre Point Amravati
                 </div>
               </div>
             </div>
