@@ -126,10 +126,10 @@
   margin: 12mm 14mm 14mm;
 }
 
-/* Barcode tags go to the portable thermal printer: one 2in × 1in die-cut label
-   per page, edge to edge. Named so it does not affect the sign-off. */
+/* Barcode tags go to the portable thermal printer: one 50 × 20 mm die-cut
+   label per page, edge to edge. Named so it does not affect the sign-off. */
 @page labels {
-  size: 2in 1in;
+  size: 50mm 20mm;
   margin: 0;
 }
 
