@@ -22,9 +22,13 @@ export default function LabelSheet({ asset, onClose }) {
     document.addEventListener('keydown', onKey);
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
+    // Tells the print stylesheet to hide the app behind this sheet, so the tags
+    // print in normal flow (see the `labels-open` rules in index.css).
+    document.body.classList.add('labels-open');
     return () => {
       document.removeEventListener('keydown', onKey);
       document.body.style.overflow = prev;
+      document.body.classList.remove('labels-open');
     };
   }, [onClose]);
 
@@ -35,7 +39,7 @@ export default function LabelSheet({ asset, onClose }) {
   const truncated = end - start + 1 > MAX;
 
   return createPortal(
-    <div className="fixed inset-0 z-50 bg-cream overflow-y-auto">
+    <div id="labels-root" className="fixed inset-0 z-50 bg-cream overflow-y-auto">
       {/* Toolbar (not printed) */}
       <div className="no-print sticky top-0 ink-panel text-white px-4 py-3 flex items-center justify-between gap-3 z-10">
         <div className="min-w-0">
