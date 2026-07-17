@@ -15,15 +15,21 @@ const MAX = 120; // labels rendered at a time
 // 90°, laying the tag along the roll and printing across the die-cut gaps.
 const LABEL = { w: 50, h: 25 };
 
-// Everything below is derived from LABEL so the artwork fills the stock at any
-// size, rather than being a fixed drawing floating on it. Padding and gap stay
-// proportional; the QR grows to the full label height (bigger QR = more
-// reliable scan) but never past 45% of the width, or a squarish label would
-// leave the text nothing to sit in.
-const PAD = LABEL.h * 0.048;
-const GAP = LABEL.h * 0.06;
-const QR_MM = Math.min(LABEL.h - PAD * 2, LABEL.w * 0.45);
-const COL_MM = LABEL.w - PAD * 2 - QR_MM - GAP; // the text takes all the rest
+// Blank margin kept clear of every edge, in mm. THIS is the safety knob: a
+// millimetre or two of feed drift or die-cut tolerance otherwise lands ink on
+// the gap between labels. Never shrink LABEL for margin instead — a page size
+// the driver does not recognise makes Chrome fall back to its default paper and
+// rotate the tag 90°, printing it along the roll and across the gaps.
+const INSET = 2.5;
+
+// Everything below is derived from the live area so the artwork fills the stock
+// at any size, rather than being a fixed drawing floating on it. The QR grows to
+// the full live height (bigger QR = more reliable scan) but never past 45% of
+// the width, or a squarish label would leave the text nothing to sit in.
+const LIVE = { w: LABEL.w - INSET * 2, h: LABEL.h - INSET * 2 };
+const GAP = LIVE.h * 0.06;
+const QR_MM = Math.min(LIVE.h, LIVE.w * 0.45);
+const COL_MM = LIVE.w - QR_MM - GAP; // the text takes all the rest
 
 const MM_PT = 72 / 25.4;
 const PX_MM = 96 / 25.4;
@@ -77,7 +83,7 @@ export default function LabelSheet({ asset, onClose }) {
   const codeChars = rangeCode(asset, lo, lo).length;
   const codePt = Math.min(
     (COL_MM * 0.96 * MM_PT) / (codeChars * 0.6),
-    ((LABEL.h - PAD * 2) * MM_PT) / STACK
+    (LIVE.h * MM_PT) / STACK
   );
   const ptOf = (r) => `${+(codePt * r).toFixed(2)}pt`;
 
@@ -153,7 +159,7 @@ export default function LabelSheet({ asset, onClose }) {
                 // The tag IS the page — never smaller, or it floats on the stock.
                 width: `${LABEL.w}mm`,
                 height: `${LABEL.h}mm`,
-                padding: `${PAD.toFixed(2)}mm`,
+                padding: `${INSET}mm`,
                 gap: `${GAP.toFixed(2)}mm`,
                 // The thermal head is 1-bit — the brand navy/grey would dither to
                 // mush at this size, so every line prints solid black.
@@ -178,7 +184,7 @@ export default function LabelSheet({ asset, onClose }) {
                 <div className="truncate" style={{ fontSize: ptOf(RAMP.detail) }}>{asset.location}</div>
                 <div
                   className="uppercase tracking-wider truncate"
-                  style={{ fontSize: ptOf(RAMP.brand), marginTop: `${(PAD * 0.33).toFixed(2)}mm` }}
+                  style={{ fontSize: ptOf(RAMP.brand), marginTop: `${(INSET * 0.16).toFixed(2)}mm` }}
                 >
                   Centre Point Amravati
                 </div>
