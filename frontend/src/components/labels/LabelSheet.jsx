@@ -13,7 +13,7 @@ const MAX = 120; // labels rendered at a time
 // equal the paper size selected in the printer driver: if it matches nothing
 // the driver knows, Chrome falls back to its default paper and rotates the page
 // 90°, laying the tag along the roll and printing across the die-cut gaps.
-const LABEL = { w: 75, h: 35 };
+const LABEL = { w: 50, h: 25 };
 
 // Everything below is derived from LABEL so the artwork fills the stock at any
 // size, rather than being a fixed drawing floating on it. Padding and gap stay
