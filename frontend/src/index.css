@@ -126,12 +126,10 @@
   margin: 12mm 14mm 14mm;
 }
 
-/* Barcode tags go to the portable thermal printer: one 50 × 20 mm die-cut
-   label per page, edge to edge. Named so it does not affect the sign-off. */
-@page labels {
-  size: 50mm 20mm;
-  margin: 0;
-}
+/* NOTE: `@page labels { size }` is deliberately NOT defined here. The label size
+   lives in the LABEL constant in LabelSheet.jsx, which injects the rule at
+   runtime — `@page size` cannot read a CSS variable, so duplicating it here is
+   what let the page and the artwork drift to different sizes. Change LABEL. */
 
 @media print {
   body * {

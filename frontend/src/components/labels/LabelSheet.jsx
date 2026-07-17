@@ -7,7 +7,32 @@ import Qr from '../Qr.jsx';
 
 const MAX = 120; // labels rendered at a time
 
-// Printable barcode (QR) tags — one per unit, sized 50 × 20 mm for the portable
+// The physical label stock, in mm. THIS IS THE ONLY PLACE THE SIZE IS SET —
+// the @page rule, the tag box, the QR and the type all derive from it, so they
+// cannot drift apart and strand a small tag on an over-sized page. It must
+// equal the paper size selected in the printer driver: if it matches nothing
+// the driver knows, Chrome falls back to its default paper and rotates the page
+// 90°, laying the tag along the roll and printing across the die-cut gaps.
+const LABEL = { w: 75, h: 35 };
+
+// Everything below is derived from LABEL so the artwork fills the stock at any
+// size, rather than being a fixed drawing floating on it. Padding and gap stay
+// proportional; the QR grows to the full label height (bigger QR = more
+// reliable scan) but never past 45% of the width, or a squarish label would
+// leave the text nothing to sit in.
+const PAD = LABEL.h * 0.048;
+const GAP = LABEL.h * 0.06;
+const QR_MM = Math.min(LABEL.h - PAD * 2, LABEL.w * 0.45);
+const COL_MM = LABEL.w - PAD * 2 - QR_MM - GAP; // the text takes all the rest
+
+const MM_PT = 72 / 25.4;
+const PX_MM = 96 / 25.4;
+// Type ramp as multiples of the code's size, and the stacked height of all five
+// lines at leading-tight (1.25).
+const RAMP = { code: 1, name: 1, detail: 0.94, brand: 0.69 };
+const STACK = 1.25 * (RAMP.code + RAMP.name + RAMP.detail * 2 + RAMP.brand);
+
+// Printable barcode (QR) tags — one per unit, sized to LABEL for the portable
 // thermal label printer (one tag per page; see the `labels` @page rule).
 // Each QR opens the unit's read-only scan page; the label prints the key details.
 export default function LabelSheet({ asset, onClose }) {
@@ -16,6 +41,16 @@ export default function LabelSheet({ asset, onClose }) {
   const total = hi - lo + 1;
   const [from, setFrom] = useState(lo);
   const [to, setTo] = useState(Math.min(hi, lo + MAX - 1));
+
+  // `@page { size }` cannot read a CSS variable, so the page rule is generated
+  // here from LABEL instead of being hard-coded in index.css. That is what keeps
+  // the paper and the artwork on a single knob.
+  useEffect(() => {
+    const el = document.createElement('style');
+    el.textContent = `@page labels { size: ${LABEL.w}mm ${LABEL.h}mm; margin: 0; }`;
+    document.head.appendChild(el);
+    return () => el.remove();
+  }, []);
 
   useEffect(() => {
     const onKey = (e) => e.key === 'Escape' && onClose();
@@ -31,6 +66,20 @@ export default function LabelSheet({ asset, onClose }) {
       document.body.classList.remove('labels-open');
     };
   }, [onClose]);
+
+  // The code is the widest fixed-width thing on the tag, so it sets the type
+  // scale: as large as fills the column, but never so large the five-line stack
+  // outgrows the label height (which a long, short stock would otherwise do).
+  // 0.6em is IBM Plex Mono's advance width; the code length is constant for an
+  // asset (fixed prefix + 4-digit unit). The 0.96 keeps a little slack, so a
+  // metric difference — or the webfont simply not having loaded, leaving a
+  // fallback mono — cannot ellipsis away part of the identifier.
+  const codeChars = rangeCode(asset, lo, lo).length;
+  const codePt = Math.min(
+    (COL_MM * 0.96 * MM_PT) / (codeChars * 0.6),
+    ((LABEL.h - PAD * 2) * MM_PT) / STACK
+  );
+  const ptOf = (r) => `${+(codePt * r).toFixed(2)}pt`;
 
   const start = Math.max(lo, Math.min(Number(from) || lo, hi));
   const end = Math.max(start, Math.min(Number(to) || hi, hi));
@@ -81,8 +130,9 @@ export default function LabelSheet({ asset, onClose }) {
 
       <div className="no-print max-w-[820px] mx-auto px-4 pt-3 space-y-1">
         <div className="text-[12.5px] text-muted">
-          Tags print at 50 × 20 mm, one per label. In the print dialog choose the 50 × 20 mm
-          label stock and set margins to None.
+          Tags print at {LABEL.w} × {LABEL.h} mm, one per label. In the print dialog you must pick
+          the matching {LABEL.w} × {LABEL.h} mm paper, with margins None and scale 100% — on any
+          other paper size the tag prints rotated, across the gaps between labels.
         </div>
         {truncated && (
           <div className="text-[12.5px] text-pending">
@@ -100,29 +150,35 @@ export default function LabelSheet({ asset, onClose }) {
               key={n}
               className="tag border border-line rounded-md bg-white flex items-center overflow-hidden"
               style={{
-                width: '50mm',
-                height: '20mm',
-                padding: '1.2mm',
-                gap: '1.5mm',
+                // The tag IS the page — never smaller, or it floats on the stock.
+                width: `${LABEL.w}mm`,
+                height: `${LABEL.h}mm`,
+                padding: `${PAD.toFixed(2)}mm`,
+                gap: `${GAP.toFixed(2)}mm`,
                 // The thermal head is 1-bit — the brand navy/grey would dither to
                 // mush at this size, so every line prints solid black.
                 color: '#000',
                 breakInside: 'avoid',
               }}
             >
-              <Qr value={scanUrl(asset, n)} size={66} res={4} className="flex-none" />
+              <Qr
+                value={scanUrl(asset, n)}
+                size={Math.round(QR_MM * PX_MM)}
+                res={4}
+                className="flex-none"
+              />
               <div className="min-w-0 leading-tight">
-                <div className="font-mono font-bold tnum truncate" style={{ fontSize: '8pt' }}>
+                <div className="font-mono font-bold tnum truncate" style={{ fontSize: ptOf(RAMP.code) }}>
                   {code}
                 </div>
-                <div className="font-semibold truncate" style={{ fontSize: '7.5pt' }}>
+                <div className="font-semibold truncate" style={{ fontSize: ptOf(RAMP.name) }}>
                   {asset.name}
                 </div>
-                <div className="truncate" style={{ fontSize: '7pt' }}>{asset.department}</div>
-                <div className="truncate" style={{ fontSize: '7pt' }}>{asset.location}</div>
+                <div className="truncate" style={{ fontSize: ptOf(RAMP.detail) }}>{asset.department}</div>
+                <div className="truncate" style={{ fontSize: ptOf(RAMP.detail) }}>{asset.location}</div>
                 <div
                   className="uppercase tracking-wider truncate"
-                  style={{ fontSize: '5pt', marginTop: '0.3mm' }}
+                  style={{ fontSize: ptOf(RAMP.brand), marginTop: `${(PAD * 0.33).toFixed(2)}mm` }}
                 >
                   Centre Point Amravati
                 </div>
