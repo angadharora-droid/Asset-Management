@@ -259,7 +259,9 @@ export default function DetailModal({ asset, onClose, onChanged }) {
         </>
       )}
 
-      {printing && <LabelSheet asset={asset} onClose={() => setPrinting(false)} />}
+      {printing && (
+        <LabelSheet asset={asset} onClose={() => setPrinting(false)} onPrinted={() => onChanged?.()} />
+      )}
 
       {tagUpdate && (
         <TagDetailsForm

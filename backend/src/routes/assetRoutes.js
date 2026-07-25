@@ -9,6 +9,7 @@ import {
   updateAsset,
   updateStatus,
   updateTagDetails,
+  markLabelsPrinted,
   deleteAsset,
 } from '../controllers/assetController.js';
 
@@ -18,6 +19,7 @@ router.get('/', asyncHandler(listAssets));
 // NOTE: the specific "/meta/next-code" route must be declared before "/:code"
 // so it isn't captured by the dynamic code param.
 router.get('/meta/next-code', asyncHandler(nextCode));
+router.post('/labels-printed', asyncHandler(markLabelsPrinted));
 router.get('/:code', asyncHandler(getAsset));
 router.post('/', asyncHandler(createAsset));
 router.put('/:code', asyncHandler(updateAsset));

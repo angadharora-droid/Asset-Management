@@ -516,6 +516,21 @@ export async function updateTagDetails(req, res) {
   res.json(asset);
 }
 
+// POST /api/assets/labels-printed  — mark entries' barcode tags as printed.
+// Body: { codes: [...] }. Called by the label sheet after a print run so the
+// register knows which entries still need their tags.
+export async function markLabelsPrinted(req, res) {
+  const codes = Array.isArray(req.body?.codes)
+    ? req.body.codes.map((c) => String(c)).filter(Boolean).slice(0, 1000)
+    : [];
+  if (!codes.length) return res.status(400).json({ message: 'No entries given.' });
+  const r = await Asset.updateMany(
+    { code: { $in: codes } },
+    { $set: { labelsPrintedAt: new Date() } }
+  );
+  res.json({ updated: r.modifiedCount });
+}
+
 // DELETE /api/assets/:code
 export async function deleteAsset(req, res) {
   const asset = await Asset.findOneAndDelete({ code: req.params.code });

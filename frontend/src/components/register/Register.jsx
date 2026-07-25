@@ -69,6 +69,11 @@ function AssetCard({ e, i, onOpen, onPrint }) {
         <Badge variant={statusVariant(e.status)} dot>{e.status}</Badge>
         <Badge variant={conditionVariant(e.condition)} dot>{e.condition}</Badge>
       </div>
+      {!e.labelsPrintedAt && (
+        <div className="inline-flex items-center gap-1 text-[11px] text-pending font-semibold mt-2.5 mr-3">
+          <IconPrinter size={13} /> Tags not printed
+        </div>
+      )}
       {needsDetails(e) && (
         <div className="inline-flex items-center gap-1 text-[11px] text-pending font-semibold mt-2.5">
           <IconClock size={13} /> Awaiting value &amp; custody
@@ -86,6 +91,7 @@ export default function Register({ assets, loading, reload }) {
   const [statusFilter, setStatusFilter] = useState('');
   const [openCode, setOpenCode] = useState(null);
   const [printAsset, setPrintAsset] = useState(null);
+  const [printBatch, setPrintBatch] = useState(null); // all not-yet-printed entries, printed in one go
   const [collapsed, setCollapsed] = useState({}); // prefix -> true when an umbrella is folded
 
   useEffect(() => {
@@ -130,6 +136,11 @@ export default function Register({ assets, loading, reload }) {
 
   const umbrellaCount = groups.filter((g) => g.entries.length > 1).length;
 
+  // Entries whose barcode tags have never been printed — oldest first, so a
+  // batch print runs in registration order.
+  const unprinted = useMemo(() => assets.filter((a) => !a.labelsPrintedAt), [assets]);
+  const unprintedTags = unprinted.reduce((s, e) => s + unitCount(e), 0);
+
   async function exportExcel() {
     if (!assets.length) {
       showToast('No entries to export yet', 'info');
@@ -147,6 +158,7 @@ export default function Register({ assets, loading, reload }) {
       'Handover Accepted': e.accepted,
       Photos: Array.isArray(e.photos) ? e.photos.length : 0,
       Documents: Array.isArray(e.documents) ? e.documents.length : 0,
+      'Tags Printed': e.labelsPrintedAt ? fmtDateTime(e.labelsPrintedAt) : 'No',
       'Logged At': fmtDateTime(e.createdAt),
     }));
     const ws = XLSX.utils.json_to_sheet(rows);
@@ -167,6 +179,11 @@ export default function Register({ assets, loading, reload }) {
         subtitle="Every logged asset, visible to the whole handover team in real time."
         actions={
           <>
+            {unprinted.length > 0 && (
+              <Btn variant="ghost" sm icon={<IconPrinter size={15} />} onClick={() => setPrintBatch(unprinted)}>
+                Print new tags ({unprintedTags})
+              </Btn>
+            )}
             <Btn variant="ghost" sm icon={<IconRefresh size={15} />} onClick={() => reload?.()}>Refresh</Btn>
             <Btn variant="gold" sm icon={<IconDownload size={15} />} onClick={exportExcel}>Export</Btn>
           </>
@@ -280,7 +297,12 @@ export default function Register({ assets, loading, reload }) {
       {openAsset && (
         <DetailModal asset={openAsset} onClose={() => setOpenCode(null)} onChanged={() => reload?.()} />
       )}
-      {printAsset && <LabelSheet asset={printAsset} onClose={() => setPrintAsset(null)} />}
+      {printAsset && (
+        <LabelSheet asset={printAsset} onClose={() => setPrintAsset(null)} onPrinted={() => reload?.()} />
+      )}
+      {printBatch && (
+        <LabelSheet assets={printBatch} onClose={() => setPrintBatch(null)} onPrinted={() => reload?.()} />
+      )}
     </div>
   );
 }

@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { rangeCode, codeLabel, scanUrl } from '../../utils/asset.js';
+import { markLabelsPrinted } from '../../api/assetApi.js';
 import { Btn } from '../ui.jsx';
 import { IconPrinter, IconClose } from '../Icon.jsx';
 import Qr from '../Qr.jsx';
@@ -39,13 +40,27 @@ const PX_MM = 96 / 25.4;
 const RAMP = { code: 1, name: 1, detail: 0.94, brand: 0.69 };
 const STACK = 1.25 * (RAMP.code + RAMP.name + RAMP.detail * 2 + RAMP.brand * 2);
 
-// Printable barcode (QR) tags — one per unit, sized to LABEL for the portable
-// thermal label printer (one tag per page; see the `labels` @page rule).
-// Each QR opens the unit's read-only scan page; the label prints the key details.
-export default function LabelSheet({ asset, onClose }) {
-  const lo = asset.seqStart || 1;
-  const hi = asset.seqEnd || lo;
-  const total = hi - lo + 1;
+// How many physical tags an entry covers.
+const unitsOf = (a) => (a?.seqStart != null && a?.seqEnd != null ? a.seqEnd - a.seqStart + 1 : 1);
+
+// Printable barcode (QR) tags, sized to LABEL for the portable thermal label
+// printer (one tag per page; see the `labels` @page rule). Each QR opens the
+// unit's read-only scan page; the label prints the key details.
+//
+// Accepts either a single entry (`asset`, with a unit-range picker) or a batch
+// (`assets`) so every not-yet-printed entry can be printed in one go. After a
+// print run the covered entries are marked printed on the server (best-effort)
+// and `onPrinted` fires so the register can refresh its "not printed" state.
+export default function LabelSheet({ asset, assets, onClose, onPrinted }) {
+  const list = useMemo(
+    () => (Array.isArray(assets) && assets.length ? assets : asset ? [asset] : []),
+    [asset, assets]
+  );
+  const single = list.length === 1 ? list[0] : null;
+
+  const lo = single ? single.seqStart || 1 : 1;
+  const hi = single ? single.seqEnd || lo : 1;
+  const totalTags = list.reduce((s, a) => s + unitsOf(a), 0);
   const [from, setFrom] = useState(lo);
   const [to, setTo] = useState(Math.min(hi, lo + MAX - 1));
 
@@ -74,25 +89,56 @@ export default function LabelSheet({ asset, onClose }) {
     };
   }, [onClose]);
 
+  if (!list.length) return null;
+
   // The code is the widest fixed-width thing on the tag, so it sets the type
-  // scale: as large as fills the column, but never so large the five-line stack
+  // scale: as large as fills the column, but never so large the six-line stack
   // outgrows the label height (which a long, short stock would otherwise do).
-  // 0.6em is IBM Plex Mono's advance width; the code length is constant for an
-  // asset (fixed prefix + 4-digit unit). The 0.96 keeps a little slack, so a
+  // 0.6em is IBM Plex Mono's advance width; the code length is constant across
+  // entries (fixed prefix + 4-digit unit). The 0.96 keeps a little slack, so a
   // metric difference — or the webfont simply not having loaded, leaving a
   // fallback mono — cannot ellipsis away part of the identifier.
-  const codeChars = rangeCode(asset, lo, lo).length;
+  const ref = list[0];
+  const codeChars = rangeCode(ref, ref.seqStart || 1, ref.seqStart || 1).length;
   const codePt = Math.min(
     (COL_MM * 0.96 * MM_PT) / (codeChars * 0.6),
     (LIVE.h * MM_PT) / STACK
   );
   const ptOf = (r) => `${+(codePt * r).toFixed(2)}pt`;
 
-  const start = Math.max(lo, Math.min(Number(from) || lo, hi));
-  const end = Math.max(start, Math.min(Number(to) || hi, hi));
-  const units = [];
-  for (let n = start; n <= end && units.length < MAX; n += 1) units.push(n);
-  const truncated = end - start + 1 > MAX;
+  // The tags to render: a chosen sub-range for a single entry, or every unit of
+  // every entry in a batch, capped at MAX per print run.
+  const items = [];
+  if (single) {
+    const start = Math.max(lo, Math.min(Number(from) || lo, hi));
+    const end = Math.max(start, Math.min(Number(to) || hi, hi));
+    for (let n = start; n <= end && items.length < MAX; n += 1) items.push({ a: single, n });
+  } else {
+    for (const a of list) {
+      const alo = a.seqStart || 1;
+      const ahi = a.seqEnd || alo;
+      for (let n = alo; n <= ahi && items.length < MAX; n += 1) items.push({ a, n });
+      if (items.length >= MAX) break;
+    }
+  }
+  const truncated = single ? undefined : totalTags > items.length;
+  const singleTruncated = single && hi - lo + 1 > MAX;
+
+  // Entries whose tags are ALL in this print run — only those get marked
+  // printed, so a batch cut off at MAX keeps its unfinished entries pending.
+  const perCode = new Map();
+  for (const it of items) perCode.set(it.a.code, (perCode.get(it.a.code) || 0) + 1);
+  const covered = single ? [single] : list.filter((a) => perCode.get(a.code) === unitsOf(a));
+
+  async function handlePrint() {
+    window.print();
+    try {
+      await markLabelsPrinted(covered.map((a) => a.code));
+      onPrinted?.();
+    } catch {
+      // best-effort — the tags are printed either way
+    }
+  }
 
   return createPortal(
     <div id="labels-root" className="fixed inset-0 z-50 bg-cream overflow-y-auto">
@@ -100,10 +146,14 @@ export default function LabelSheet({ asset, onClose }) {
       <div className="no-print sticky top-0 ink-panel text-white px-4 py-3 flex items-center justify-between gap-3 z-10">
         <div className="min-w-0">
           <div className="font-serif text-[16px] leading-tight">Print barcode tags</div>
-          <div className="text-[12px] text-white/60 truncate">{codeLabel(asset)} · {asset.name}</div>
+          <div className="text-[12px] text-white/60 truncate">
+            {single
+              ? `${codeLabel(single)} · ${single.name}`
+              : `${list.length} entries · ${totalTags} tags`}
+          </div>
         </div>
         <div className="flex items-center gap-2 flex-none">
-          {total > 1 && (
+          {single && hi - lo + 1 > 1 && (
             <div className="hidden sm:flex items-center gap-1.5 text-[12px]">
               <span className="text-white/60">Units</span>
               <input
@@ -121,7 +171,7 @@ export default function LabelSheet({ asset, onClose }) {
               />
             </div>
           )}
-          <Btn variant="gold" sm icon={<IconPrinter size={15} />} onClick={() => window.print()}>
+          <Btn variant="gold" sm icon={<IconPrinter size={15} />} onClick={handlePrint}>
             Print
           </Btn>
           <button
@@ -141,20 +191,26 @@ export default function LabelSheet({ asset, onClose }) {
           the matching {LABEL.w} × {LABEL.h} mm paper, with margins None and scale 100% — on any
           other paper size the tag prints rotated, across the gaps between labels.
         </div>
-        {truncated && (
+        {singleTruncated && (
           <div className="text-[12.5px] text-pending">
             Showing {MAX} tags at a time — adjust the unit range above to print the rest.
           </div>
         )}
+        {truncated && (
+          <div className="text-[12.5px] text-pending">
+            Showing the first {items.length} of {totalTags} tags — print these, then open
+            “Print new tags” again for the rest (finished entries won’t repeat).
+          </div>
+        )}
       </div>
 
-      {/* Printable labels — each box is exactly one 2in × 1in physical tag. */}
+      {/* Printable labels — each box is exactly one physical tag. */}
       <div id="labels-print" className="max-w-[820px] mx-auto p-4 flex flex-wrap gap-3 justify-center">
-        {units.map((n) => {
-          const code = rangeCode(asset, n, n);
+        {items.map(({ a, n }) => {
+          const code = rangeCode(a, n, n);
           return (
             <div
-              key={n}
+              key={`${a.code}:${n}`}
               className="tag border border-line rounded-md bg-white flex items-center overflow-hidden"
               style={{
                 // The tag IS the page — never smaller, or it floats on the stock.
@@ -169,7 +225,7 @@ export default function LabelSheet({ asset, onClose }) {
               }}
             >
               <Qr
-                value={scanUrl(asset, n)}
+                value={scanUrl(a, n)}
                 size={Math.round(QR_MM * PX_MM)}
                 res={4}
                 className="flex-none"
@@ -179,23 +235,23 @@ export default function LabelSheet({ asset, onClose }) {
                   {code}
                 </div>
                 <div className="font-semibold truncate" style={{ fontSize: ptOf(RAMP.name) }}>
-                  {asset.name}
+                  {a.name}
                 </div>
-                <div className="truncate" style={{ fontSize: ptOf(RAMP.detail) }}>{asset.department}</div>
-                <div className="truncate" style={{ fontSize: ptOf(RAMP.detail) }}>{asset.location}</div>
-                {asset.property && (
+                <div className="truncate" style={{ fontSize: ptOf(RAMP.detail) }}>{a.department}</div>
+                <div className="truncate" style={{ fontSize: ptOf(RAMP.detail) }}>{a.location}</div>
+                {a.property && (
                   <div
                     className="uppercase tracking-wider truncate"
                     style={{ fontSize: ptOf(RAMP.brand), marginTop: `${(INSET * 0.16).toFixed(2)}mm` }}
                   >
-                    Property of {asset.property}
+                    Property of {a.property}
                   </div>
                 )}
                 <div
                   className="uppercase tracking-wider truncate"
                   style={{
                     fontSize: ptOf(RAMP.brand),
-                    marginTop: asset.property ? 0 : `${(INSET * 0.16).toFixed(2)}mm`,
+                    marginTop: a.property ? 0 : `${(INSET * 0.16).toFixed(2)}mm`,
                   }}
                 >
                   Centre Point Amravati

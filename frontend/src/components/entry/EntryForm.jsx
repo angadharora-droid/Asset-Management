@@ -470,7 +470,9 @@ export default function EntryForm({ onSaved, assets = [] }) {
         </aside>
       </div>
 
-      {printAsset && <LabelSheet asset={printAsset} onClose={() => setPrintAsset(null)} />}
+      {printAsset && (
+        <LabelSheet asset={printAsset} onClose={() => setPrintAsset(null)} onPrinted={() => onSaved?.()} />
+      )}
     </form>
   );
 }

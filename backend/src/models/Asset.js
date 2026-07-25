@@ -147,6 +147,10 @@ const assetSchema = new mongoose.Schema(
     // Who logged this entry (captured from the authenticated user).
     createdBy: { type: String, default: '' },
 
+    // When this entry's barcode tags were last printed (null = never), so the
+    // register can offer "print all new tags" in one go.
+    labelsPrintedAt: { type: Date, default: null },
+
     // Per-range condition breakdown (always at least one segment covering the
     // whole block; multiple when a batch is split by condition).
     segments: { type: [segmentSchema], default: [] },
