@@ -106,7 +106,7 @@ function blockCount(qty, uom) {
 // `itemCode` and timestamps are controlled by the server.
 const WRITABLE = [
   'name', 'brand', 'model', 'serial', 'size', 'qty', 'uom',
-  'floor', 'department', 'location',
+  'property', 'floor', 'department', 'location',
   'status', 'condition', 'expectedLocation', 'functionalityChecked', 'remarks',
   'estimatedValue', 'valueSource', 'biggerThanMicrowave', 'usefulLifeOver12', 'classification',
   'tempCustodian', 'finalCustodian', 'hgaRep', 'cphRep', 'verifiedBy', 'accepted',

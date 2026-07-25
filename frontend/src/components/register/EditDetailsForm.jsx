@@ -3,9 +3,9 @@ import { updateAsset } from '../../api/assetApi.js';
 import { useToast } from '../../context/ToastContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { suggestClassification } from '../../utils/classification.js';
-import { VALUE_SOURCES, CLASSIFICATIONS, ACCEPTED_OPTIONS } from '../../constants/categories.js';
+import { VALUE_SOURCES, CLASSIFICATIONS, ACCEPTED_OPTIONS, PROPERTIES } from '../../constants/categories.js';
 import { SectionHead, Label, Btn, Banner, inputCls, selectCls } from '../ui.jsx';
-import { IconBanknote, IconShield, IconCheck } from '../Icon.jsx';
+import { IconBanknote, IconShield, IconCheck, IconMapPin } from '../Icon.jsx';
 
 // Stage 2 — value, accounting class and custody, filled in from the Register
 // after the asset has already been physically captured.
@@ -13,6 +13,7 @@ export default function EditDetailsForm({ asset, onCancel, onSaved }) {
   const showToast = useToast();
   const { user } = useAuth();
   const [form, setForm] = useState({
+    property: asset.property || '',
     estimatedValue: asset.estimatedValue ?? '',
     valueSource: asset.valueSource || 'Unknown',
     biggerThanMicrowave: asset.biggerThanMicrowave || 'Not Applicable',
@@ -65,8 +66,18 @@ export default function EditDetailsForm({ asset, onCancel, onSaved }) {
 
   return (
     <div>
+      {/* Property */}
+      <SectionHead icon={<IconMapPin size={15} />}>Property</SectionHead>
+      <Label className="!mt-0">Property this asset is registered under</Label>
+      <select className={selectCls} {...bind('property')}>
+        <option value="">Select…</option>
+        {PROPERTIES.map((p) => <option key={p}>{p}</option>)}
+      </select>
+
       {/* Value & Classification */}
-      <SectionHead icon={<IconBanknote size={15} />}>Value &amp; Classification</SectionHead>
+      <div className="mt-4">
+        <SectionHead icon={<IconBanknote size={15} />}>Value &amp; Classification</SectionHead>
+      </div>
       <div className="grid grid-cols-2 gap-2.5">
         <div>
           <Label>Estimated Value (₹)</Label>
