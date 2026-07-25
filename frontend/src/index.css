@@ -126,6 +126,12 @@
   margin: 12mm 14mm 14mm;
 }
 
+/* The room report prints as a formal portrait document. */
+@page roomreport {
+  size: A4;
+  margin: 12mm 14mm;
+}
+
 /* NOTE: `@page labels { size }` is deliberately NOT defined here. The label size
    lives in the LABEL constant in LabelSheet.jsx, which injects the rule at
    runtime — `@page size` cannot read a CSS variable, so duplicating it here is
@@ -138,8 +144,33 @@
   #signoff-print,
   #signoff-print *,
   #labels-print,
-  #labels-print * {
+  #labels-print *,
+  #roomreport-print,
+  #roomreport-print * {
     visibility: visible;
+  }
+
+  /* Hidden on screen (display:none), shown only on paper. Positioned against
+     the page (its parent is <body>), out of the modal's clipping containers. */
+  #roomreport-print {
+    display: block !important;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    page: roomreport;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    color-adjust: exact;
+    font-size: 10.5px;
+  }
+  /* Repeat each room's header rows on every page; never split an item row. */
+  #roomreport-print thead {
+    display: table-header-group;
+  }
+  #roomreport-print tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
   #signoff-print {
     position: absolute;
