@@ -8,6 +8,17 @@ import Modal from '../Modal.jsx';
 // How many physical tags an entry covers.
 const unitCount = (e) => (e.seqStart != null && e.seqEnd != null ? e.seqEnd - e.seqStart + 1 : 1);
 
+// Normalise a typed location so every spelling of the same room lands in ONE
+// group: case and spacing are ignored, and a leading "Room / Rm / Room No."
+// prefix is dropped when a number follows — "201", "room 201", "Room No. 201"
+// and "201 " are all the same room. A prefix before a word is kept, so a
+// location genuinely called "Room Service Store" is not mangled.
+function roomKey(loc) {
+  const s = String(loc || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  const m = s.match(/^(?:room|rm)\.?\s*(?:no\.?|number|#)?\s*[:\-#]?\s*(\d.*)$/);
+  return (m ? m[1] : s).trim();
+}
+
 // Room-wise report: every room (exact location) with the entries inside it,
 // unit counts and estimated value — searchable, exportable to Excel.
 export default function RoomReport({ assets, onClose }) {
@@ -16,13 +27,17 @@ export default function RoomReport({ assets, onClose }) {
   const rooms = useMemo(() => {
     const map = new Map();
     for (const a of assets) {
-      const room = String(a.location || '').trim() || '(no room recorded)';
-      const key = room.toLowerCase();
-      if (!map.has(key)) map.set(key, { room, entries: [] });
-      map.get(key).entries.push(a);
+      const raw = String(a.location || '').trim() || '(no room recorded)';
+      const key = roomKey(raw);
+      if (!map.has(key)) map.set(key, { entries: [], spellings: new Map() });
+      const g = map.get(key);
+      g.entries.push(a);
+      g.spellings.set(raw, (g.spellings.get(raw) || 0) + 1);
     }
     const list = [...map.values()];
     for (const r of list) {
+      // Display the spelling the team used most often for this room.
+      r.room = [...r.spellings.entries()].sort((a, b) => b[1] - a[1])[0][0];
       r.units = r.entries.reduce((s, e) => s + unitCount(e), 0);
       r.value = r.entries.reduce((s, e) => s + (parseFloat(e.estimatedValue) || 0), 0);
       r.departments = [...new Set(r.entries.map((e) => e.department).filter(Boolean))];
