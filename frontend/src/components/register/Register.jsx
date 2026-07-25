@@ -7,11 +7,12 @@ import {
   Badge, Btn, inputCls, selectCls, statusVariant, conditionVariant, Skeleton, EmptyState,
 } from '../ui.jsx';
 import {
-  IconSearch, IconRefresh, IconDownload, IconClock, IconChevronRight, IconClipboardList, IconPrinter,
+  IconSearch, IconRefresh, IconDownload, IconClock, IconChevronRight, IconClipboardList, IconPrinter, IconMapPin,
 } from '../Icon.jsx';
 import Tag from '../Tag.jsx';
 import PageHeader from '../layout/PageHeader.jsx';
 import DetailModal from './DetailModal.jsx';
+import RoomReport from './RoomReport.jsx';
 import LabelSheet from '../labels/LabelSheet.jsx';
 
 const STRIPE = {
@@ -92,6 +93,7 @@ export default function Register({ assets, loading, reload }) {
   const [openCode, setOpenCode] = useState(null);
   const [printAsset, setPrintAsset] = useState(null);
   const [printBatch, setPrintBatch] = useState(null); // all not-yet-printed entries, printed in one go
+  const [roomReport, setRoomReport] = useState(false);
   const [collapsed, setCollapsed] = useState({}); // prefix -> true when an umbrella is folded
 
   useEffect(() => {
@@ -184,6 +186,7 @@ export default function Register({ assets, loading, reload }) {
                 Print new tags ({unprintedTags})
               </Btn>
             )}
+            <Btn variant="ghost" sm icon={<IconMapPin size={15} />} onClick={() => setRoomReport(true)}>Room report</Btn>
             <Btn variant="ghost" sm icon={<IconRefresh size={15} />} onClick={() => reload?.()}>Refresh</Btn>
             <Btn variant="gold" sm icon={<IconDownload size={15} />} onClick={exportExcel}>Export</Btn>
           </>
@@ -303,6 +306,7 @@ export default function Register({ assets, loading, reload }) {
       {printBatch && (
         <LabelSheet assets={printBatch} onClose={() => setPrintBatch(null)} onPrinted={() => reload?.()} />
       )}
+      {roomReport && <RoomReport assets={assets} onClose={() => setRoomReport(false)} />}
     </div>
   );
 }
