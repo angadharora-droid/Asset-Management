@@ -6,7 +6,7 @@ export const UNIT_PREFIX = 'CPA';
 
 export const CATEGORIES = [
   { name: 'Kitchen Equipment', code: 'KIT', items: ['OVN:Oven', 'GRL:Grill/Griddle', 'FRZ:Freezer', 'FRD:Fridge', 'MIX:Mixer', 'DSH:Dishwasher', 'STV:Stove/Range', 'BLN:Blender'] },
-  { name: 'Furniture, Fixtures & Equipment (FF&E)', code: 'FFE', items: ['CHR:Chair', 'TBL:Table', 'SOF:Sofa', 'BED:Bed', 'WRD:Wardrobe', 'MIR:Mirror', 'LMP:Lamp', 'CRT:Curtain', 'DSK:Desk', 'STL:Stool', 'CAB:Cabinet'] },
+  { name: 'Furniture, Fixtures & Equipment (FF&E)', code: 'FFE', items: ['CHR:Chair', 'TBL:Table', 'SOF:Sofa', 'BED:Bed', 'MTR:Mattress', 'WRD:Wardrobe', 'MIR:Mirror', 'LMP:Lamp', 'CRT:Curtain', 'DSK:Desk', 'STL:Stool', 'CAB:Cabinet'] },
   { name: 'IT & Electronics', code: 'ITE', items: ['TVS:Television', 'LAP:Laptop', 'CPU:Desktop CPU', 'MON:Monitor', 'PRN:Printer', 'POS:POS Machine', 'PRJ:Projector', 'TAB:Tablet', 'RTR:Router', 'UPS:UPS Unit'] },
   { name: 'Plant & Machinery', code: 'PNM', items: ['CHL:Chiller', 'DGS:DG Set', 'HVC:HVAC Unit', 'PMP:Pump', 'BLR:Boiler', 'COM:Compressor', 'ELV:Elevator/Lift'] },
   { name: 'Engineering Equipment', code: 'ENG', items: ['TLS:Tool Set', 'LDR:Ladder', 'WLD:Welding Machine', 'DRL:Drill Machine', 'GEN:Generator'] },

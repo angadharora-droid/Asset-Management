@@ -9,6 +9,7 @@ import publicRoutes from './src/routes/publicRoutes.js';
 import { protect } from './src/middleware/auth.js';
 import { ensureAdminUser } from './src/controllers/authController.js';
 import { ensureScanIds } from './src/controllers/assetController.js';
+import { reconcileSequences } from './src/utils/codeGenerator.js';
 import { notFound, errorHandler } from './src/middleware/errorHandler.js';
 
 dotenv.config();
@@ -58,6 +59,7 @@ connectDB()
   .then(async () => {
     await ensureAdminUser();
     await ensureScanIds();
+    await reconcileSequences();
     app.listen(PORT, () =>
       console.log(`✅ CPA Asset Handover API running on http://localhost:${PORT}`)
     );

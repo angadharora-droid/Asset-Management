@@ -1,5 +1,6 @@
 import Counter from '../models/Counter.js';
 import FreedBlock from '../models/FreedBlock.js';
+import Asset from '../models/Asset.js';
 import { UNIT_PREFIX } from '../constants/categories.js';
 
 export function pad(n) {
@@ -49,6 +50,55 @@ export async function peekSequence(key, count = 1) {
   if (hole) return hole.from;
   const doc = await Counter.findById(key).lean();
   return (doc?.seq || 0) + 1;
+}
+
+// Rebuild every counter and the parked holes from the assets that actually
+// exist. Runs at startup so gaps left by deletions made BEFORE the reuse
+// feature existed (when nothing recorded them) become reusable too, and any
+// key whose entries were all deleted starts again from 0001.
+export async function reconcileSequences() {
+  const assets = await Asset.find()
+    .select('code codeEnd seqStart seqEnd categoryCode itemCode')
+    .lean();
+  const numOf = (c) => parseInt(String(c || '').split('.').pop(), 10);
+
+  const occupied = new Map(); // key -> [[from, to], ...]
+  for (const a of assets) {
+    const key = `${a.categoryCode}.${a.itemCode}`;
+    const from = a.seqStart ?? numOf(a.code);
+    const to = a.seqEnd ?? (a.codeEnd ? numOf(a.codeEnd) : from);
+    if (!Number.isFinite(from) || !Number.isFinite(to)) continue;
+    if (!occupied.has(key)) occupied.set(key, []);
+    occupied.get(key).push([from, to]);
+  }
+
+  // Also visit keys that only exist as counters/holes (all entries deleted).
+  const keys = new Set(occupied.keys());
+  for (const c of await Counter.find().select('_id').lean()) keys.add(c._id);
+  for (const k of await FreedBlock.distinct('key')) keys.add(k);
+
+  let changed = 0;
+  for (const key of keys) {
+    const ranges = (occupied.get(key) || []).sort((a, b) => a[0] - b[0]);
+    const holes = [];
+    let cursor = 1; // lowest number not known to be occupied
+    let max = 0;
+    for (const [from, to] of ranges) {
+      if (from > cursor) holes.push([cursor, from - 1]);
+      cursor = Math.max(cursor, to + 1);
+      max = Math.max(max, to);
+    }
+    const before = await Counter.findById(key).lean();
+    if ((before?.seq || 0) !== max) changed += 1;
+    await Counter.updateOne({ _id: key }, { $set: { seq: max } }, { upsert: true });
+    await FreedBlock.deleteMany({ key });
+    if (holes.length) {
+      await FreedBlock.insertMany(
+        holes.map(([from, to]) => ({ key, from, to, size: to - from + 1 }))
+      );
+    }
+  }
+  if (changed) console.log(`🔢 Reconciled ${changed} code counter(s) to match the register.`);
 }
 
 // Release a deleted entry's block [from, to] so its numbers are reused.
