@@ -23,7 +23,7 @@ export const CATEGORIES = [
 
 export const SENSITIVE_CATS = ['ITE', 'SEC', 'PNM', 'ENG'];
 
-// Properties an asset can be registered under.
+// Who the asset is the property of (ownership) — not the hotel name.
 export const PROPERTIES = ['Centre Point', 'Hariganga'];
 
 export const DEPARTMENTS = [

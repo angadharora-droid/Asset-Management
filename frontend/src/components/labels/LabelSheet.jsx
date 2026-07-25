@@ -33,10 +33,11 @@ const COL_MM = LIVE.w - QR_MM - GAP; // the text takes all the rest
 
 const MM_PT = 72 / 25.4;
 const PX_MM = 96 / 25.4;
-// Type ramp as multiples of the code's size, and the stacked height of all five
-// lines at leading-tight (1.25).
+// Type ramp as multiples of the code's size, and the stacked height of all six
+// lines at leading-tight (1.25) — code, name, department, location, the
+// "Property of <owner>" line, and the hotel name.
 const RAMP = { code: 1, name: 1, detail: 0.94, brand: 0.69 };
-const STACK = 1.25 * (RAMP.code + RAMP.name + RAMP.detail * 2 + RAMP.brand);
+const STACK = 1.25 * (RAMP.code + RAMP.name + RAMP.detail * 2 + RAMP.brand * 2);
 
 // Printable barcode (QR) tags — one per unit, sized to LABEL for the portable
 // thermal label printer (one tag per page; see the `labels` @page rule).
@@ -182,11 +183,22 @@ export default function LabelSheet({ asset, onClose }) {
                 </div>
                 <div className="truncate" style={{ fontSize: ptOf(RAMP.detail) }}>{asset.department}</div>
                 <div className="truncate" style={{ fontSize: ptOf(RAMP.detail) }}>{asset.location}</div>
+                {asset.property && (
+                  <div
+                    className="uppercase tracking-wider truncate"
+                    style={{ fontSize: ptOf(RAMP.brand), marginTop: `${(INSET * 0.16).toFixed(2)}mm` }}
+                  >
+                    Property of {asset.property}
+                  </div>
+                )}
                 <div
                   className="uppercase tracking-wider truncate"
-                  style={{ fontSize: ptOf(RAMP.brand), marginTop: `${(INSET * 0.16).toFixed(2)}mm` }}
+                  style={{
+                    fontSize: ptOf(RAMP.brand),
+                    marginTop: asset.property ? 0 : `${(INSET * 0.16).toFixed(2)}mm`,
+                  }}
                 >
-                  {asset.property || 'Centre Point Amravati'}
+                  Centre Point Amravati
                 </div>
               </div>
             </div>
