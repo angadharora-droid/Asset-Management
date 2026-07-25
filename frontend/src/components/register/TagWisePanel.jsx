@@ -69,8 +69,8 @@ export default function TagWisePanel({ asset, onEditTag, onChanged }) {
       </div>
       <p className="text-[12px] text-muted mb-3">
         {isBlock
-          ? 'Pick a single tag to edit its details (serial no., remarks…) or attach a photo for it.'
-          : 'Edit this tag’s details (serial no., remarks…) or attach a photo for it.'}
+          ? 'Pick a single tag to edit its serial no. & remarks — along with every other entry detail — or attach a photo for it.'
+          : 'Edit this tag’s details (serial, location, value, custody…) or attach a photo for it.'}
       </p>
 
       {isBlock && (
