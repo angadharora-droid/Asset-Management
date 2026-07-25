@@ -11,7 +11,7 @@ import {
   itemsForCategory,
 } from '../../constants/categories.js';
 import { fmtDateTime } from '../../utils/format.js';
-import { codeLabel, blockCount } from '../../utils/asset.js';
+import { codeLabel, blockCount, codePrefix } from '../../utils/asset.js';
 import {
   Card, SectionHead, Label, Btn, Banner, ChipGroup,
   inputCls, selectCls, statusVariant, conditionVariant,
@@ -52,8 +52,20 @@ export default function EntryForm({ onSaved, assets = [] }) {
   const bind = (name) => ({ value: form[name], onChange: (e) => setField(name, e.target.value) });
 
   const itemOptions = useMemo(() => itemsForCategory(form.categoryCode), [form.categoryCode]);
-  // Latest additions, newest first — the register arrives oldest-first.
-  const recent = useMemo(() => assets.slice(-5).reverse(), [assets]);
+  // One entry per barcode series (CAT.ITM), represented by that series' most
+  // recent addition, newest series first — the register arrives oldest-first.
+  const recent = useMemo(() => {
+    const seen = new Set();
+    const out = [];
+    for (let i = assets.length - 1; i >= 0; i -= 1) {
+      const a = assets[i];
+      const key = `${a.categoryCode}.${a.itemCode}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(a);
+    }
+    return out;
+  }, [assets]);
   const itemCodeValid = /^[A-Z]{3}$/.test(form.itemCode);
   const isDamaged = form.condition === 'Damaged';
   const isMissing = form.status === 'Missing';
@@ -193,8 +205,8 @@ export default function EntryForm({ onSaved, assets = [] }) {
             <Card>
               <SectionHead icon={<IconClock size={15} />}>Add a recent addition again</SectionHead>
               <p className="text-[12.5px] text-muted -mt-1.5 mb-3">
-                Tap an entry to fill this form with its details in one go — then change what differs
-                (quantity, room, serial) and save.
+                One per barcode series, latest first. Tap one to fill this form with that series&rsquo;
+                most recent details in one go — then change what differs (quantity, room, serial) and save.
               </p>
               <div className="flex gap-2 overflow-x-auto pb-1">
                 {recent.map((a) => (
@@ -207,7 +219,9 @@ export default function EntryForm({ onSaved, assets = [] }) {
                                hover:border-gold hover:bg-cream transition-colors
                                focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-light"
                   >
-                    <div className="font-mono text-[11px] font-bold text-navy tnum truncate">{codeLabel(a)}</div>
+                    <div className="font-mono text-[11px] font-bold text-navy tnum truncate">
+                      {codePrefix(a.code).replace(/\.$/, '') || codeLabel(a)}
+                    </div>
                     <div className="text-[12px] font-semibold truncate mt-0.5">{a.name || '(no description)'}</div>
                     <div className="text-[11px] text-muted truncate">{[a.department, a.location].filter(Boolean).join(' · ')}</div>
                   </button>
