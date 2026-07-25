@@ -12,6 +12,7 @@ import mongoose from 'mongoose';
 import { connectDB } from './config/db.js';
 import Asset from './models/Asset.js';
 import Counter from './models/Counter.js';
+import FreedBlock from './models/FreedBlock.js';
 import { findCategory, COUNTABLE_UOMS } from './constants/categories.js';
 import { reserveSequence, buildCode } from './utils/codeGenerator.js';
 
@@ -54,6 +55,7 @@ async function run() {
 
   await Asset.deleteMany({});
   await Counter.deleteMany({});
+  await FreedBlock.deleteMany({});
   console.log('🧹 Cleared existing assets and counters.');
 
   for (const s of SAMPLES) {
