@@ -3,22 +3,43 @@ import { updateAsset } from '../../api/assetApi.js';
 import { useToast } from '../../context/ToastContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { suggestClassification } from '../../utils/classification.js';
-import { VALUE_SOURCES, CLASSIFICATIONS, ACCEPTED_OPTIONS, PROPERTIES } from '../../constants/categories.js';
+import { codeLabel } from '../../utils/asset.js';
+import {
+  DEPARTMENTS, PROPERTIES, VALUE_SOURCES, CLASSIFICATIONS, ACCEPTED_OPTIONS,
+} from '../../constants/categories.js';
 import { SectionHead, Label, Btn, Banner, inputCls, selectCls } from '../ui.jsx';
-import { IconBanknote, IconShield, IconCheck, IconMapPin } from '../Icon.jsx';
+import { IconBox, IconMapPin, IconBanknote, IconShield, IconCamera, IconFile, IconCheck } from '../Icon.jsx';
+import PhotoUploader from '../entry/PhotoUploader.jsx';
+import DocumentUploader from '../entry/DocumentUploader.jsx';
 
-// Stage 2 — value, accounting class and custody, filled in from the Register
-// after the asset has already been physically captured.
+// Edit an existing entry from the Register. Everything is editable except the
+// identity (code / category / item type — the barcode is already issued) and
+// the quantity (its code block is already reserved). Status & condition are
+// updated from the status flow so every change lands in the audit trail.
 export default function EditDetailsForm({ asset, onCancel, onSaved }) {
   const showToast = useToast();
   const { user } = useAuth();
   const [form, setForm] = useState({
+    // What it is
+    name: asset.name || '',
+    brand: asset.brand || '',
+    model: asset.model || '',
+    serial: asset.serial || '',
+    size: asset.size || '',
+    // Where
     property: asset.property || '',
+    floor: asset.floor || '',
+    department: asset.department || '',
+    location: asset.location || '',
+    expectedLocation: asset.expectedLocation || '',
+    remarks: asset.remarks || '',
+    // Value & classification
     estimatedValue: asset.estimatedValue ?? '',
     valueSource: asset.valueSource || 'Unknown',
     biggerThanMicrowave: asset.biggerThanMicrowave || 'Not Applicable',
     usefulLifeOver12: asset.usefulLifeOver12 || 'Unknown',
     classification: asset.classification || 'Pending Review',
+    // Custody
     tempCustodian: asset.tempCustodian || '',
     finalCustodian: asset.finalCustodian || '',
     hgaRep: asset.hgaRep || '',
@@ -26,6 +47,15 @@ export default function EditDetailsForm({ asset, onCancel, onSaved }) {
     verifiedBy: asset.verifiedBy || user?.name || '',
     accepted: asset.accepted || 'Pending',
   });
+  // Attachments — normalise any legacy {front, location, …} photo objects.
+  const [photos, setPhotos] = useState(() =>
+    Array.isArray(asset.photos)
+      ? asset.photos.filter((p) => p?.dataUrl)
+      : Object.entries(asset.photos || {})
+          .filter(([, v]) => v)
+          .map(([k, v]) => ({ dataUrl: v, caption: k }))
+  );
+  const [documents, setDocuments] = useState(() => (Array.isArray(asset.documents) ? asset.documents : []));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -45,14 +75,20 @@ export default function EditDetailsForm({ asset, onCancel, onSaved }) {
   }, [form.estimatedValue, form.usefulLifeOver12]);
 
   async function handleSave() {
-    setSaving(true);
     setError('');
+    if (!form.name.trim()) return setError('Asset Name / Description is required.');
+    if (!form.department) return setError('Department / Area is required.');
+    if (!form.location.trim()) return setError('Exact Location / Room No. is required.');
+
+    setSaving(true);
     try {
       const payload = {
         ...form,
         estimatedValue: form.estimatedValue === '' ? null : Number(form.estimatedValue),
         tempCustodian: form.tempCustodian.trim() || 'Handover Committee',
         finalCustodian: form.finalCustodian.trim() || 'To be assigned',
+        photos,
+        documents,
       };
       await updateAsset(asset.code, payload);
       showToast('Updated ' + asset.code, 'success');
@@ -66,13 +102,67 @@ export default function EditDetailsForm({ asset, onCancel, onSaved }) {
 
   return (
     <div>
-      {/* Property */}
-      <SectionHead icon={<IconMapPin size={15} />}>Property</SectionHead>
-      <Label className="!mt-0">Property this asset is registered under</Label>
+      {/* What it is */}
+      <SectionHead icon={<IconBox size={15} />}>What is it</SectionHead>
+      <div className="text-[12px] text-muted -mt-1.5 mb-1">
+        Code <span className="font-mono font-semibold text-navy tnum">{codeLabel(asset)}</span> ·{' '}
+        {asset.qty} {asset.uom} — the barcode, category and quantity are fixed once issued.
+      </div>
+      <Label required>Asset Name / Description</Label>
+      <input className={inputCls} {...bind('name')} />
+      <div className="grid grid-cols-2 gap-2.5">
+        <div>
+          <Label>Brand / Make</Label>
+          <input className={inputCls} {...bind('brand')} />
+        </div>
+        <div>
+          <Label>Model</Label>
+          <input className={inputCls} {...bind('model')} />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-2.5">
+        <div>
+          <Label>Serial No.</Label>
+          <input className={inputCls} {...bind('serial')} />
+        </div>
+        <div>
+          <Label>Size / Capacity</Label>
+          <input className={inputCls} {...bind('size')} />
+        </div>
+      </div>
+      <Label>Remarks / Observation</Label>
+      <textarea className={inputCls} {...bind('remarks')} />
+
+      {/* Where */}
+      <div className="mt-4">
+        <SectionHead icon={<IconMapPin size={15} />}>Where</SectionHead>
+      </div>
+      <Label className="!mt-0">Property</Label>
       <select className={selectCls} {...bind('property')}>
         <option value="">Select…</option>
         {PROPERTIES.map((p) => <option key={p}>{p}</option>)}
       </select>
+      <div className="grid grid-cols-2 gap-2.5">
+        <div>
+          <Label>Floor / Block</Label>
+          <input className={inputCls} {...bind('floor')} />
+        </div>
+        <div>
+          <Label required>Department / Area</Label>
+          <select className={selectCls} {...bind('department')}>
+            <option value="">Select…</option>
+            {DEPARTMENTS.map((d) => <option key={d}>{d}</option>)}
+          </select>
+        </div>
+      </div>
+      <Label required>Exact Location / Room No. / Outlet</Label>
+      <input className={inputCls} {...bind('location')} />
+      {(asset.status === 'Missing' || form.expectedLocation) && (
+        <>
+          <Label>Expected Location</Label>
+          <input className={inputCls} placeholder="Where was this expected to be found?" {...bind('expectedLocation')} />
+        </>
+      )}
 
       {/* Value & Classification */}
       <div className="mt-4">
@@ -159,6 +249,17 @@ export default function EditDetailsForm({ asset, onCancel, onSaved }) {
         </div>
       </div>
 
+      {/* Attachments */}
+      <div className="mt-4">
+        <SectionHead icon={<IconCamera size={15} />}>Photos</SectionHead>
+      </div>
+      <PhotoUploader value={photos} onChange={setPhotos} requireOne={asset.condition === 'Damaged'} />
+
+      <div className="mt-4">
+        <SectionHead icon={<IconFile size={15} />}>Documents</SectionHead>
+      </div>
+      <DocumentUploader value={documents} onChange={setDocuments} />
+
       {error && <Banner tone="error" role="alert" className="mt-3">{error}</Banner>}
 
       <div className="flex gap-2 mt-5">
@@ -172,7 +273,7 @@ export default function EditDetailsForm({ asset, onCancel, onSaved }) {
           icon={!saving && <IconCheck size={16} />}
           className="flex-1"
         >
-          {saving ? 'Saving…' : 'Save value & custody'}
+          {saving ? 'Saving…' : 'Save changes'}
         </Btn>
       </div>
     </div>
