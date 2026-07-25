@@ -4,6 +4,7 @@ import { useToast } from '../../context/ToastContext.jsx';
 import {
   CATEGORIES,
   DEPARTMENTS,
+  PROPERTIES,
   UOM_OPTIONS,
   STATUS_OPTIONS,
   CONDITION_OPTIONS,
@@ -24,7 +25,7 @@ import ConditionSplit from './ConditionSplit.jsx';
 import LabelSheet from '../labels/LabelSheet.jsx';
 
 const EMPTY = {
-  floor: '', department: '', location: '',
+  property: '', floor: '', department: '', location: '',
   categoryCode: '', itemCode: '', name: '',
   brand: '', model: '', serial: '', size: '', qty: 1, uom: 'Nos',
   status: 'Found', condition: 'Good', expectedLocation: '',
@@ -126,7 +127,7 @@ export default function EntryForm({ onSaved }) {
       showToast('Saved as ' + saved.code, 'success');
       setLastSaved(`Last saved ${saved.code} · ${fmtDateTime(saved.createdAt)}`);
       setSavedAsset(saved);
-      setForm({ ...EMPTY, department: form.department, floor: form.floor });
+      setForm({ ...EMPTY, property: form.property, department: form.department, floor: form.floor });
       setPhotos([]);
       setDocuments([]);
       setSplit(false);
@@ -160,6 +161,14 @@ export default function EntryForm({ onSaved }) {
           {/* 1 — Where */}
           <Card>
             <SectionHead icon={<IconMapPin size={15} />}>Where</SectionHead>
+            <Label htmlFor="f-property" className="!mt-0">
+              Property
+              <span className="block font-normal text-muted text-[11.5px] mt-px">Which property is this asset being registered under?</span>
+            </Label>
+            <select id="f-property" className={selectCls} {...bind('property')}>
+              <option value="">Select…</option>
+              {PROPERTIES.map((p) => <option key={p}>{p}</option>)}
+            </select>
             <div className="grid grid-cols-2 gap-2.5">
               <div>
                 <Label htmlFor="f-floor">Floor / Block</Label>

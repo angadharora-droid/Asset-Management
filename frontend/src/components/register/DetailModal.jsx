@@ -115,6 +115,7 @@ export default function DetailModal({ asset, onClose, onChanged }) {
             </Banner>
           )}
 
+          <Row k="Property" v={asset.property} />
           <Row k="Category" v={asset.category} />
           <Row
             k="Location"

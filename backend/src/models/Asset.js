@@ -83,6 +83,7 @@ const assetSchema = new mongoose.Schema(
     uom: { type: String, default: 'Nos' },
 
     // Where
+    property: { type: String, default: '', trim: true }, // property / site the asset belongs to
     floor: { type: String, default: '', trim: true },
     department: { type: String, required: true },
     location: { type: String, required: true, trim: true },

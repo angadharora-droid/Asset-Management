@@ -23,6 +23,9 @@ export const CATEGORIES = [
 
 export const SENSITIVE_CATS = ['ITE', 'SEC', 'PNM', 'ENG'];
 
+// Properties an asset can be registered under.
+export const PROPERTIES = ['Centre Point', 'Hariganga'];
+
 export const DEPARTMENTS = [
   'Front Office', 'Housekeeping', 'Food & Beverage', 'Kitchen', 'Engineering',
   'Security', 'Admin / Back Office', 'Banquet', 'Spa / Recreation',
