@@ -90,8 +90,9 @@ export default function EditDetailsForm({ asset, onCancel, onSaved }) {
         photos,
         documents,
       };
-      await updateAsset(asset.code, payload);
-      showToast('Updated ' + asset.code, 'success');
+      const saved = await updateAsset(asset.code, payload);
+      const reprint = asset.labelsPrintedAt && !saved.labelsPrintedAt;
+      showToast('Updated ' + asset.code + (reprint ? ' — tags need reprinting' : ''), 'success');
       onSaved?.();
     } catch (err) {
       setError(err.message || 'Could not save changes.');
