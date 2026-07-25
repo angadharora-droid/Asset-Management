@@ -16,7 +16,7 @@ import {
   Card, SectionHead, Label, Btn, Banner, ChipGroup,
   inputCls, selectCls, statusVariant, conditionVariant,
 } from '../ui.jsx';
-import { IconMapPin, IconBox, IconCheckCircle, IconCamera, IconCheck, IconFile, IconPrinter } from '../Icon.jsx';
+import { IconMapPin, IconBox, IconCheckCircle, IconCamera, IconCheck, IconFile, IconPrinter, IconClock } from '../Icon.jsx';
 import Tag from '../Tag.jsx';
 import PageHeader from '../layout/PageHeader.jsx';
 import PhotoUploader from './PhotoUploader.jsx';
@@ -32,7 +32,7 @@ const EMPTY = {
   functionalityChecked: 'Not Applicable', remarks: '',
 };
 
-export default function EntryForm({ onSaved }) {
+export default function EntryForm({ onSaved, assets = [] }) {
   const showToast = useToast();
   const [form, setForm] = useState(() => ({ ...EMPTY }));
   const [photos, setPhotos] = useState([]);
@@ -52,6 +52,8 @@ export default function EntryForm({ onSaved }) {
   const bind = (name) => ({ value: form[name], onChange: (e) => setField(name, e.target.value) });
 
   const itemOptions = useMemo(() => itemsForCategory(form.categoryCode), [form.categoryCode]);
+  // Latest additions, newest first — the register arrives oldest-first.
+  const recent = useMemo(() => assets.slice(-5).reverse(), [assets]);
   const itemCodeValid = /^[A-Z]{3}$/.test(form.itemCode);
   const isDamaged = form.condition === 'Damaged';
   const isMissing = form.status === 'Missing';
@@ -79,6 +81,34 @@ export default function EntryForm({ onSaved }) {
 
   function onItemCode(e) {
     setField('itemCode', e.target.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3));
+  }
+
+  // Prefill the whole form from a recent addition so a similar item can be
+  // registered in one go. Copies the descriptive + location fields; the serial
+  // (unique per unit), verification state and attachments start fresh.
+  function copyFrom(a) {
+    setForm({
+      ...EMPTY,
+      property: a.property || '',
+      floor: a.floor || '',
+      department: a.department || '',
+      location: a.location || '',
+      categoryCode: a.categoryCode || '',
+      itemCode: a.itemCode || '',
+      name: a.name || '',
+      brand: a.brand || '',
+      model: a.model || '',
+      size: a.size || '',
+      qty: a.qty || 1,
+      uom: a.uom || 'Nos',
+    });
+    setPhotos([]);
+    setDocuments([]);
+    setSplit(false);
+    setBreakdown([{ qty: 1, status: 'Found', condition: 'Good', functionalityChecked: 'Not Applicable', remarks: '' }]);
+    setError('');
+    showToast(`Filled from ${a.code} — adjust and save`, 'info');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   async function handleSubmit(e) {
@@ -158,6 +188,34 @@ export default function EntryForm({ onSaved }) {
       <div className="lg:grid lg:grid-cols-[1fr_300px] lg:gap-8 lg:items-start">
         {/* MAIN COLUMN */}
         <div>
+          {/* 0 — Quick fill from a recent addition */}
+          {recent.length > 0 && (
+            <Card>
+              <SectionHead icon={<IconClock size={15} />}>Add a recent addition again</SectionHead>
+              <p className="text-[12.5px] text-muted -mt-1.5 mb-3">
+                Tap an entry to fill this form with its details in one go — then change what differs
+                (quantity, room, serial) and save.
+              </p>
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {recent.map((a) => (
+                  <button
+                    type="button"
+                    key={a.code}
+                    onClick={() => copyFrom(a)}
+                    title={`Fill the form from ${a.code}`}
+                    className="flex-none w-[170px] text-left bg-cream/60 border border-line rounded-lg px-3 py-2
+                               hover:border-gold hover:bg-cream transition-colors
+                               focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-light"
+                  >
+                    <div className="font-mono text-[11px] font-bold text-navy tnum truncate">{codeLabel(a)}</div>
+                    <div className="text-[12px] font-semibold truncate mt-0.5">{a.name || '(no description)'}</div>
+                    <div className="text-[11px] text-muted truncate">{[a.department, a.location].filter(Boolean).join(' · ')}</div>
+                  </button>
+                ))}
+              </div>
+            </Card>
+          )}
+
           {/* 1 — Where */}
           <Card>
             <SectionHead icon={<IconMapPin size={15} />}>Where</SectionHead>
