@@ -110,12 +110,19 @@ export default function TagDetailsForm({ asset, unit, onClose, onSaved }) {
 
     setSaving(true);
     try {
-      if (Object.keys(shared).length) await updateAsset(asset.code, shared);
+      let reprint = false;
+      if (Object.keys(shared).length) {
+        const saved = await updateAsset(asset.code, shared);
+        reprint = !!(asset.labelsPrintedAt && !saved.labelsPrintedAt);
+      }
       if (Object.keys(perTag).length) {
         if (isBlock) perTag.unit = n;
         await updateTagDetails(asset.code, perTag);
       }
-      showToast(`Saved · ${isBlock ? tagCode : codeLabel(asset)}`, 'success');
+      showToast(
+        `Saved · ${isBlock ? tagCode : codeLabel(asset)}${reprint ? ' — tags need reprinting' : ''}`,
+        'success'
+      );
       onSaved?.();
       onClose();
     } catch (err) {

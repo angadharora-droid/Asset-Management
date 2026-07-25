@@ -292,6 +292,12 @@ export async function createAsset(req, res) {
   res.status(201).json(asset);
 }
 
+// Fields that appear on the printed barcode label. When one of them changes
+// after the tags were already printed, the entry is flagged for reprint
+// (labelsPrintedAt cleared) so "Print new tags" offers it again with the
+// updated details.
+const LABEL_FIELDS = ['name', 'department', 'location', 'property'];
+
 // PUT /api/assets/:code  — edit an existing asset (identity stays fixed)
 export async function updateAsset(req, res) {
   const data = normalizeNumbers(pick(req.body || {}, WRITABLE));
@@ -309,7 +315,14 @@ export async function updateAsset(req, res) {
   const ruleError = validateBusinessRules(merged);
   if (ruleError) return res.status(400).json({ message: ruleError });
 
+  const needsReprint =
+    existing.labelsPrintedAt &&
+    LABEL_FIELDS.some(
+      (f) => data[f] !== undefined && String(data[f]) !== String(existing[f] ?? '')
+    );
+
   Object.assign(existing, data);
+  if (needsReprint) existing.labelsPrintedAt = null;
   // Acceptance set from the whole-asset edit applies to every sub-range.
   if (data.accepted !== undefined && Array.isArray(existing.segments) && existing.segments.length) {
     existing.segments.forEach((s) => {
