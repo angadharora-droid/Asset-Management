@@ -186,7 +186,7 @@ export default function LabelSheet({ asset, onClose }) {
                   className="uppercase tracking-wider truncate"
                   style={{ fontSize: ptOf(RAMP.brand), marginTop: `${(INSET * 0.16).toFixed(2)}mm` }}
                 >
-                  Centre Point Amravati
+                  {asset.property || 'Centre Point Amravati'}
                 </div>
               </div>
             </div>
