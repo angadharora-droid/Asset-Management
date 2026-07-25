@@ -59,6 +59,7 @@ export const updateStatus = (code, payload) =>
 export const updateTagDetails = (code, payload) =>
   unwrap(api.patch(`/assets/${encodeURIComponent(code)}/tag`, payload));
 export const deleteAsset = (code) => unwrap(api.delete(`/assets/${encodeURIComponent(code)}`));
+export const markLabelsPrinted = (codes) => unwrap(api.post('/assets/labels-printed', { codes }));
 export const getNextCode = (categoryCode, itemCode, count = 1) =>
   unwrap(api.get('/assets/meta/next-code', { params: { categoryCode, itemCode, count } }));
 // Public, read-only — used by scanned barcode tags (lookup by scan token).
