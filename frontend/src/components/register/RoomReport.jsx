@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { codeLabel } from '../../utils/asset.js';
-import { fmtDate, inr } from '../../utils/format.js';
+import { fmtDate, fmtDateTime, inr } from '../../utils/format.js';
 import { Badge, Btn, inputCls, statusVariant, conditionVariant, EmptyState } from '../ui.jsx';
-import { IconSearch, IconDownload, IconMapPin, IconClipboardList } from '../Icon.jsx';
+import { IconSearch, IconDownload, IconMapPin, IconClipboardList, IconPrinter } from '../Icon.jsx';
 import Modal from '../Modal.jsx';
 
 // How many physical tags an entry covers.
@@ -112,9 +113,20 @@ export default function RoomReport({ assets, onClose }) {
         </>
       }
       footer={
-        <Btn variant="gold" block icon={<IconDownload size={16} />} onClick={exportExcel} disabled={!rooms.length}>
-          Export room report (Excel)
-        </Btn>
+        <div className="flex gap-2">
+          <Btn
+            variant="ghost"
+            icon={<IconPrinter size={16} />}
+            onClick={() => window.print()}
+            disabled={!filtered.length}
+            className="flex-1"
+          >
+            Save as PDF
+          </Btn>
+          <Btn variant="gold" icon={<IconDownload size={16} />} onClick={exportExcel} disabled={!rooms.length} className="flex-1">
+            Excel
+          </Btn>
+        </div>
       }
     >
       <div className="relative mb-3">
@@ -167,6 +179,64 @@ export default function RoomReport({ assets, onClose }) {
             </div>
           </div>
         ))
+      )}
+
+      {/* Printed / PDF version — hidden on screen, rendered against <body> so
+          the modal's scroll containers can't clip it. Prints the rooms
+          currently shown (search applies), one table per room. */}
+      {createPortal(
+        <div id="roomreport-print" className="hidden text-ink">
+          <h2 className="font-serif text-[20px] text-navy m-0">Room-wise Asset Report</h2>
+          <div className="text-[11px] mt-1">
+            Centre Point Amravati · Asset Handover Register
+          </div>
+          <div className="text-[10px] text-muted mt-0.5 tnum">
+            Generated {fmtDateTime(new Date().toISOString())} · {filtered.length}{' '}
+            {filtered.length === 1 ? 'room' : 'rooms'} ·{' '}
+            {filtered.reduce((s, r) => s + r.entries.length, 0)} entries ·{' '}
+            {filtered.reduce((s, r) => s + r.entries.reduce((u, e) => u + unitCount(e), 0), 0)} units
+          </div>
+          {filtered.map((r) => (
+            <table key={r.room} className="w-full border-collapse mt-4">
+              <thead>
+                <tr>
+                  <th colSpan={6} className="text-left bg-navy text-white px-2 py-1.5 text-[11px]">
+                    {r.room}
+                    <span className="font-normal">
+                      {' '}
+                      — {[r.floors.join(', '), r.departments.join(', ')].filter(Boolean).join(' · ')}
+                      {' · '}{r.entries.length} {r.entries.length === 1 ? 'entry' : 'entries'} ·{' '}
+                      {r.entries.reduce((u, e) => u + unitCount(e), 0)} units
+                      {r.value ? ` · ${inr(r.value)}` : ''}
+                    </span>
+                  </th>
+                </tr>
+                <tr>
+                  {['Code', 'Asset', 'Qty', 'Status', 'Condition', 'Est. Value'].map((h) => (
+                    <th key={h} className="text-left border border-line bg-cream px-2 py-1 text-[9.5px] uppercase tracking-wide">
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {r.entries.map((e) => (
+                  <tr key={e.code}>
+                    <td className="border border-line px-2 py-1 font-mono tnum whitespace-nowrap">{codeLabel(e)}</td>
+                    <td className="border border-line px-2 py-1">{e.name || '—'}</td>
+                    <td className="border border-line px-2 py-1 tnum whitespace-nowrap">{e.qty} {e.uom}</td>
+                    <td className="border border-line px-2 py-1">{e.status}</td>
+                    <td className="border border-line px-2 py-1">{e.condition}</td>
+                    <td className="border border-line px-2 py-1 tnum whitespace-nowrap">
+                      {e.estimatedValue != null ? inr(e.estimatedValue) : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ))}
+        </div>,
+        document.body
       )}
     </Modal>
   );
