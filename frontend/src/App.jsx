@@ -62,7 +62,7 @@ function AuthedApp() {
           )}
 
           <div key={activeTab} className="animate-fade-in-up">
-            {activeTab === 'entry' && <EntryForm onSaved={reload} />}
+            {activeTab === 'entry' && <EntryForm onSaved={reload} assets={assets} />}
             {activeTab === 'register' && <Register assets={assets} loading={loading} reload={reload} />}
             {activeTab === 'status' && <StatusBoard assets={assets} loading={loading} reload={reload} />}
             {activeTab === 'dashboard' && <Dashboard assets={assets} loading={loading} reload={reload} />}
