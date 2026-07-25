@@ -81,7 +81,7 @@ export default function DetailModal({ asset, onClose, onChanged }) {
 
   const footer = editing ? null : (
     <Btn variant="gold" block icon={<IconPen size={16} />} onClick={() => setEditing(true)}>
-      {needsDetails(asset) ? 'Add value & custody' : 'Edit value & custody'}
+      {needsDetails(asset) ? 'Add value & custody' : 'Edit details'}
     </Btn>
   );
 
