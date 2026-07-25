@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import Asset from '../models/Asset.js';
 import { findCategory, COUNTABLE_UOMS } from '../constants/categories.js';
-import { reserveSequence, peekSequence, buildCode, pad } from '../utils/codeGenerator.js';
+import { reserveSequence, peekSequence, releaseSequence, buildCode, pad } from '../utils/codeGenerator.js';
 
 // Unguessable token used in public scan links (so codes can't be enumerated).
 export const newScanId = () => crypto.randomBytes(16).toString('base64url');
@@ -166,7 +166,7 @@ export async function nextCode(req, res) {
     return res.status(400).json({ message: 'A valid categoryCode and 3-letter itemCode are required.' });
   }
   const count = Math.max(1, Math.floor(Number(req.query.count) || 1));
-  const start = await peekSequence(`${categoryCode}.${itemCode}`);
+  const start = await peekSequence(`${categoryCode}.${itemCode}`, count);
   const end = start + count - 1;
   res.json({
     code: buildCode(categoryCode, itemCode, start),
@@ -520,5 +520,22 @@ export async function updateTagDetails(req, res) {
 export async function deleteAsset(req, res) {
   const asset = await Asset.findOneAndDelete({ code: req.params.code });
   if (!asset) return res.status(404).json({ message: 'Asset not found' });
+
+  // Release the entry's code block so the next registration of the same
+  // category.item starts from the deleted number instead of leaving a gap.
+  // Legacy entries predate seqStart/seqEnd — fall back to the code's digits.
+  const numOf = (c) => parseInt(String(c || '').split('.').pop(), 10);
+  const from = asset.seqStart ?? numOf(asset.code);
+  const to = asset.seqEnd ?? (asset.codeEnd ? numOf(asset.codeEnd) : from);
+  if (Number.isFinite(from) && Number.isFinite(to)) {
+    try {
+      await releaseSequence(`${asset.categoryCode}.${asset.itemCode}`, from, to);
+    } catch (err) {
+      // The entry is already gone — a failed release only means its numbers
+      // are not reused, so log it rather than failing the request.
+      console.error(`Could not release code block for ${asset.code}:`, err.message);
+    }
+  }
+
   res.json({ message: 'Deleted', code: req.params.code });
 }
