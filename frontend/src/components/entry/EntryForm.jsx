@@ -24,6 +24,13 @@ import DocumentUploader from './DocumentUploader.jsx';
 import ConditionSplit from './ConditionSplit.jsx';
 import LabelSheet from '../labels/LabelSheet.jsx';
 
+// Unique key for one form submission. Retries after a network error reuse the
+// SAME key, so the server can recognise them and never save the entry twice.
+const newEntryKey = () =>
+  window.crypto?.randomUUID
+    ? window.crypto.randomUUID()
+    : `k-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+
 const EMPTY = {
   property: '', floor: '', department: '', location: '',
   categoryCode: '', itemCode: '', name: '',
@@ -43,6 +50,7 @@ export default function EntryForm({ onSaved, assets = [] }) {
   ]);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [entryKey, setEntryKey] = useState(newEntryKey);
   const [preview, setPreview] = useState(null);
   const [lastSaved, setLastSaved] = useState('');
   const [savedAsset, setSavedAsset] = useState(null);
@@ -119,12 +127,14 @@ export default function EntryForm({ onSaved, assets = [] }) {
     setSplit(false);
     setBreakdown([{ qty: 1, status: 'Found', condition: 'Good', functionalityChecked: 'Not Applicable', remarks: '' }]);
     setError('');
+    setEntryKey(newEntryKey()); // a fresh entry, not a retry of the previous one
     showToast(`Filled from ${a.code} — adjust and save`, 'info');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   async function handleSubmit(e) {
     e.preventDefault();
+    if (saving) return; // a save is already on its way — wait for its confirmation
     setError('');
     if (!form.categoryCode) return setError('Please select an Asset Category.');
     if (!itemCodeValid) return setError('Item Type Code must be exactly 3 letters (e.g. CHR).');
@@ -153,6 +163,7 @@ export default function EntryForm({ onSaved, assets = [] }) {
         qty: Number(form.qty) || 1,
         photos,
         documents,
+        clientKey: entryKey,
       };
       if (splitting) {
         payload.breakdown = breakdown
@@ -169,6 +180,9 @@ export default function EntryForm({ onSaved, assets = [] }) {
       showToast('Saved as ' + saved.code, 'success');
       setLastSaved(`Last saved ${saved.code} · ${fmtDateTime(saved.createdAt)}`);
       setSavedAsset(saved);
+      // Confirmed by the server — only now does the next submission get a new
+      // key. A failed attempt keeps the key, so retrying can't duplicate.
+      setEntryKey(newEntryKey());
       setForm({ ...EMPTY, property: form.property, department: form.department, floor: form.floor });
       setPhotos([]);
       setDocuments([]);

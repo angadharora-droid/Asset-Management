@@ -200,6 +200,15 @@ export async function createAsset(req, res) {
     return res.status(400).json({ message: 'Item Type Code must be exactly 3 letters (e.g. CHR).' });
   }
 
+  // Idempotency: a retry of the same submission (flaky network, double tap)
+  // carries the same clientKey — return the entry it already created instead
+  // of registering a duplicate.
+  const clientKey = String(body.clientKey || '').trim().slice(0, 100) || null;
+  if (clientKey) {
+    const already = await Asset.findOne({ clientKey }).lean();
+    if (already) return res.status(200).json(already);
+  }
+
   const data = normalizeNumbers(pick(body, WRITABLE));
 
   if (!String(data.name || '').trim()) return res.status(400).json({ message: 'Asset Name / Description is required.' });
@@ -288,19 +297,37 @@ export async function createAsset(req, res) {
   data.functionalityChecked = deriveTop(segments, 'functionalityChecked');
   data.accepted = deriveTop(segments, 'accepted');
 
-  const asset = await Asset.create({
-    ...data,
-    code,
-    codeEnd,
-    seqStart: start,
-    seqEnd: end,
-    segments,
-    categoryCode,
-    itemCode,
-    category: cat.name,
-    createdBy: req.user?.name || '',
-    scanId: newScanId(),
-  });
+  let asset;
+  try {
+    asset = await Asset.create({
+      ...data,
+      code,
+      codeEnd,
+      seqStart: start,
+      seqEnd: end,
+      segments,
+      categoryCode,
+      itemCode,
+      category: cat.name,
+      createdBy: req.user?.name || '',
+      scanId: newScanId(),
+      ...(clientKey ? { clientKey } : {}),
+    });
+  } catch (err) {
+    // Two simultaneous retries of the same submission: the unique clientKey
+    // index lets only one insert win. Give the loser's reserved code block
+    // back and answer with the entry the winner created.
+    if (clientKey && err?.code === 11000 && err?.keyPattern?.clientKey) {
+      try {
+        await releaseSequence(`${categoryCode}.${itemCode}`, start, end);
+      } catch {
+        // the numbers stay unused at worst
+      }
+      const winner = await Asset.findOne({ clientKey }).lean();
+      if (winner) return res.status(200).json(winner);
+    }
+    throw err;
+  }
 
   res.status(201).json(asset);
 }

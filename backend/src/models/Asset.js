@@ -151,6 +151,11 @@ const assetSchema = new mongoose.Schema(
     // register can offer "print all new tags" in one go.
     labelsPrintedAt: { type: Date, default: null },
 
+    // Client-generated idempotency key. Retries of the SAME form submission
+    // (flaky network, double tap) carry the same key, so at most one entry is
+    // ever created for it. No default — absent unless the client sends one.
+    clientKey: { type: String },
+
     // Per-range condition breakdown (always at least one segment covering the
     // whole block; multiple when a batch is split by condition).
     segments: { type: [segmentSchema], default: [] },
@@ -167,6 +172,12 @@ const assetSchema = new mongoose.Schema(
     toJSON: { virtuals: true },
     toObject: { virtuals: true },
   }
+);
+
+// Unique only across real string keys (older entries have no clientKey at all).
+assetSchema.index(
+  { clientKey: 1 },
+  { unique: true, partialFilterExpression: { clientKey: { $type: 'string' } } }
 );
 
 export default mongoose.model('Asset', assetSchema);
