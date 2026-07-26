@@ -1,4 +1,5 @@
 import express from 'express';
+import compression from 'compression';
 import cors from 'cors';
 import dotenv from 'dotenv';
 
@@ -15,6 +16,9 @@ import { notFound, errorHandler } from './src/middleware/errorHandler.js';
 dotenv.config();
 
 const app = express();
+
+// Gzip API responses — the register list is highly compressible JSON.
+app.use(compression());
 
 // ---- Trust proxy ----
 // Set TRUST_PROXY when running behind a reverse proxy / load balancer so req.ip

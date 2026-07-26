@@ -145,8 +145,21 @@ function validateBusinessRules(data) {
 }
 
 // GET /api/assets  — full register, oldest first (matches the original ordering)
+// The list intentionally EXCLUDES the inline photo/document blobs: with them,
+// every reload of the Register/Status tabs re-downloaded the entire photo
+// library as base64. The list carries counts instead; the complete record is
+// fetched per-asset (GET /assets/:code) when a detail view needs it.
 export async function listAssets(req, res) {
-  const assets = await Asset.find().sort({ createdAt: 1 }).lean();
+  const assets = await Asset.aggregate([
+    { $sort: { createdAt: 1 } },
+    {
+      $addFields: {
+        photoCount: { $cond: [{ $isArray: '$photos' }, { $size: '$photos' }, 0] },
+        documentCount: { $cond: [{ $isArray: '$documents' }, { $size: '$documents' }, 0] },
+      },
+    },
+    { $project: { photos: 0, documents: 0 } },
+  ]);
   res.json(assets);
 }
 

@@ -158,8 +158,8 @@ export default function Register({ assets, loading, reload }) {
       Classification: e.classification, 'Temp Custodian': e.tempCustodian, 'Final Custodian': e.finalCustodian,
       'Verified By': e.verifiedBy, 'Hariganga Rep': e.hgaRep, 'CPH Rep': e.cphRep,
       'Handover Accepted': e.accepted,
-      Photos: Array.isArray(e.photos) ? e.photos.length : 0,
-      Documents: Array.isArray(e.documents) ? e.documents.length : 0,
+      Photos: e.photoCount ?? (Array.isArray(e.photos) ? e.photos.length : 0),
+      Documents: e.documentCount ?? (Array.isArray(e.documents) ? e.documents.length : 0),
       'Tags Printed': e.labelsPrintedAt ? fmtDateTime(e.labelsPrintedAt) : 'No',
       'Logged At': fmtDateTime(e.createdAt),
     }));

@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { updateAsset } from '../../api/assetApi.js';
+import { updateAsset, getAsset } from '../../api/assetApi.js';
 import { compressImage } from '../../utils/image.js';
 import { useToast } from '../../context/ToastContext.jsx';
 import { rangeCode } from '../../utils/asset.js';
@@ -33,7 +33,8 @@ export default function TagWisePanel({ asset, onEditTag, onChanged }) {
 
   const clampedUnit = Math.max(lo, Math.min(Math.floor(Number(unit) || lo), hi));
   const tagCode = rangeCode(asset, clampedUnit, clampedUnit);
-  const photoCount = normalizePhotos(asset).length;
+  // The slim list entry carries photoCount instead of the photos themselves.
+  const photoCount = asset.photoCount ?? normalizePhotos(asset).length;
 
   async function handleFiles(e) {
     const file = (e.target.files || [])[0];
@@ -50,7 +51,10 @@ export default function TagWisePanel({ asset, onEditTag, onChanged }) {
     setBusy(true);
     try {
       const dataUrl = await compressImage(file, 1000, 0.7);
-      const photos = [...normalizePhotos(asset), { dataUrl, caption: tagCode }];
+      // Fetch the complete record first — the list entry has no photo blobs,
+      // so appending to it would silently drop the existing photos.
+      const fresh = await getAsset(asset.code);
+      const photos = [...normalizePhotos(fresh), { dataUrl, caption: tagCode }];
       await updateAsset(asset.code, { photos });
       showToast(`Photo added for ${tagCode}`, 'success');
       onChanged?.();
