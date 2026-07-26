@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { deleteAsset } from '../../api/assetApi.js';
+import { useEffect, useState } from 'react';
+import { deleteAsset, getAsset } from '../../api/assetApi.js';
 import { useToast } from '../../context/ToastContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { fmtDateTime, inr } from '../../utils/format.js';
@@ -35,16 +35,36 @@ export default function DetailModal({ asset, onClose, onChanged }) {
   // null = closed; otherwise { unit } where unit is a tag number (or null for
   // the whole single-unit asset).
   const [tagUpdate, setTagUpdate] = useState(null);
+  // The register list arrives WITHOUT photo/document blobs (they'd make every
+  // reload huge) — fetch the complete record for this one asset on open.
+  const [full, setFull] = useState(null);
+
+  const code = asset?.code;
+  const updatedAt = asset?.updatedAt;
+  useEffect(() => {
+    if (!code) return undefined;
+    let active = true;
+    getAsset(code)
+      .then((a) => active && setFull(a))
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [code, updatedAt]);
 
   if (!asset) return null;
 
+  // Full record once loaded; the slim list entry meanwhile (same fields except
+  // the attachments).
+  const record = full || asset;
+
   // Support both the new array shape and any legacy {front,location,…} objects.
-  const photos = Array.isArray(asset.photos)
-    ? asset.photos.filter((p) => p?.dataUrl)
-    : Object.entries(asset.photos || {})
+  const photos = Array.isArray(record.photos)
+    ? record.photos.filter((p) => p?.dataUrl)
+    : Object.entries(record.photos || {})
         .filter(([, v]) => v)
         .map(([k, v]) => ({ dataUrl: v, caption: k }));
-  const documents = asset.documents || [];
+  const documents = Array.isArray(record.documents) ? record.documents : [];
   const segments = assetSegments(asset);
   const hasBreakdown = Array.isArray(asset.segments) && asset.segments.length > 1;
 
@@ -79,9 +99,11 @@ export default function DetailModal({ asset, onClose, onChanged }) {
     </>
   );
 
+  // Editing waits for the full record — starting from the slim list entry
+  // would save an empty photo/document list over the real one.
   const footer = editing ? null : (
-    <Btn variant="gold" block icon={<IconPen size={16} />} onClick={() => setEditing(true)}>
-      {needsDetails(asset) ? 'Add value & custody' : 'Edit details'}
+    <Btn variant="gold" block icon={<IconPen size={16} />} onClick={() => setEditing(true)} disabled={!full}>
+      {!full ? 'Loading…' : needsDetails(asset) ? 'Add value & custody' : 'Edit details'}
     </Btn>
   );
 
@@ -94,7 +116,7 @@ export default function DetailModal({ asset, onClose, onChanged }) {
 
       {editing ? (
         <EditDetailsForm
-          asset={asset}
+          asset={record}
           onCancel={() => setEditing(false)}
           onSaved={() => {
             setEditing(false);
@@ -107,7 +129,7 @@ export default function DetailModal({ asset, onClose, onChanged }) {
             Print barcode tags
           </Btn>
 
-          <TagWisePanel asset={asset} onEditTag={(unit) => setTagUpdate({ unit })} onChanged={onChanged} />
+          <TagWisePanel asset={record} onEditTag={(unit) => setTagUpdate({ unit })} onChanged={onChanged} />
 
           {needsDetails(asset) && (
             <Banner tone="info" className="!mb-3">
@@ -233,8 +255,13 @@ export default function DetailModal({ asset, onClose, onChanged }) {
             </div>
           )}
 
-          {photos.length === 0 && documents.length === 0 && (
-            <div className="text-muted text-[12.5px] mt-3">No photos or documents attached.</div>
+          {!full ? (
+            <div className="text-muted text-[12.5px] mt-3">Loading photos &amp; documents…</div>
+          ) : (
+            photos.length === 0 &&
+            documents.length === 0 && (
+              <div className="text-muted text-[12.5px] mt-3">No photos or documents attached.</div>
+            )
           )}
 
           {isAdmin && (
