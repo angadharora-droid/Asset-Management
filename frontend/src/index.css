@@ -132,6 +132,12 @@
   margin: 12mm 14mm;
 }
 
+/* Every Reports-hub report shares one portrait page setup. */
+@page report {
+  size: A4;
+  margin: 12mm 14mm;
+}
+
 /* NOTE: `@page labels { size }` is deliberately NOT defined here. The label size
    lives in the LABEL constant in LabelSheet.jsx, which injects the rule at
    runtime — `@page size` cannot read a CSS variable, so duplicating it here is
@@ -146,8 +152,32 @@
   #labels-print,
   #labels-print *,
   #roomreport-print,
-  #roomreport-print * {
+  #roomreport-print *,
+  #report-print,
+  #report-print * {
     visibility: visible;
+  }
+
+  /* Shared print surface for the Reports hub (tag-wise, grouped, exception…).
+     Same off-screen-then-reveal trick as the room report. */
+  #report-print {
+    display: block !important;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    page: report;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    color-adjust: exact;
+    font-size: 10px;
+  }
+  #report-print thead {
+    display: table-header-group;
+  }
+  #report-print tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 
   /* Hidden on screen (display:none), shown only on paper. Positioned against
