@@ -180,4 +180,7 @@ assetSchema.index(
   { unique: true, partialFilterExpression: { clientKey: { $type: 'string' } } }
 );
 
+// The register list sorts the whole collection by createdAt.
+assetSchema.index({ createdAt: 1 });
+
 export default mongoose.model('Asset', assetSchema);
