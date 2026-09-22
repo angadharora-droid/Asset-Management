@@ -7,6 +7,7 @@ import { connectDB } from './src/config/db.js';
 import assetRoutes from './src/routes/assetRoutes.js';
 import authRoutes from './src/routes/authRoutes.js';
 import publicRoutes from './src/routes/publicRoutes.js';
+import ssoRoutes from './src/routes/ssoRoutes.js';
 import { protect } from './src/middleware/auth.js';
 import { ensureAdminUser } from './src/controllers/authController.js';
 import { ensureScanIds } from './src/controllers/assetController.js';
@@ -51,6 +52,7 @@ app.get('/api/health', (req, res) =>
 // ---- Routes ----
 app.use('/api/auth', authRoutes);
 app.use('/api/public', publicRoutes); // read-only scan lookups (no auth)
+app.use('/api/sso', ssoRoutes); // user directory for the central sign-on admin (shared-secret guarded)
 app.use('/api/assets', protect, assetRoutes); // all asset routes require login
 
 // ---- 404 + error handling ----
