@@ -1,7 +1,9 @@
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
+import mongoose from 'mongoose';
 import User from '../models/User.js';
 import { signToken } from '../utils/jwt.js';
+import { verifySsoToken } from '../lib/ssoClient.js';
 
 const MIN_PASSWORD = 8;
 
@@ -24,6 +26,23 @@ export async function login(req, res) {
   }
   if (!user.active) {
     return res.status(403).json({ message: 'This account has been disabled.' });
+  }
+  res.json({ token: signToken(user), user: user.toSafe() });
+}
+
+// POST /api/auth/sso — central sign-on from the CPG portal. The browser brings a
+// hand-off token; the auth service tells us which local account it is linked to
+// (by Mongo _id) and that account is signed in exactly like a password login.
+// Always 401 while AUTH_SERVICE_URL is not configured; the password login is untouched.
+export async function ssoLogin(req, res) {
+  const verified = await verifySsoToken(String(req.body.token || ''));
+  if (!verified) {
+    return res.status(401).json({ message: 'SSO sign-in failed.' });
+  }
+  const id = String(verified.localUserId || '');
+  const user = mongoose.isValidObjectId(id) ? await User.findById(id) : null;
+  if (!user || !user.active) {
+    return res.status(404).json({ message: 'No account linked.' });
   }
   res.json({ token: signToken(user), user: user.toSafe() });
 }
