@@ -1,15 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
 import { updateAsset, updateTagDetails } from '../../api/assetApi.js';
 import { useToast } from '../../context/ToastContext.jsx';
+import { useSite } from '../../context/SiteContext.jsx';
 import { assetSegments, rangeCode, codeLabel } from '../../utils/asset.js';
 import { suggestClassification } from '../../utils/classification.js';
 import {
-  DEPARTMENTS, PROPERTIES, VALUE_SOURCES, CLASSIFICATIONS, ACCEPTED_OPTIONS,
+  DEPARTMENTS, VALUE_SOURCES, CLASSIFICATIONS, ACCEPTED_OPTIONS,
 } from '../../constants/categories.js';
 import { SectionHead, Label, Btn, Banner, inputCls, selectCls } from '../ui.jsx';
 import { IconCheck, IconTag, IconBox, IconMapPin, IconBanknote, IconShield } from '../Icon.jsx';
 import Tag from '../Tag.jsx';
 import Modal from '../Modal.jsx';
+import { LegalEntitySelect, SiteLocationSelect } from '../entry/SiteFields.jsx';
 
 // Whole-entry fields the shared section edits — everything the full editor
 // allows. Only the ones that actually changed are sent on save.
@@ -26,6 +28,7 @@ const SHARED_KEYS = [
 // they go through the status flow so changes land in the audit trail.
 export default function TagDetailsForm({ asset, unit, onClose, onSaved }) {
   const showToast = useToast();
+  const { site } = useSite();
   const lo = asset.seqStart || 1;
   const hi = asset.seqEnd || lo;
   const isBlock = hi > lo;
@@ -204,15 +207,12 @@ export default function TagDetailsForm({ asset, unit, onClose, onSaved }) {
       <div className="mt-4">
         <SectionHead icon={<IconMapPin size={15} />}>Where</SectionHead>
       </div>
-      <Label className="!mt-0">Property</Label>
-      <select className={selectCls} {...bind('property')}>
-        <option value="">Select…</option>
-        {PROPERTIES.map((p) => <option key={p}>{p}</option>)}
-      </select>
+      <Label htmlFor="t-property" className="!mt-0">Asset of Legal Entity</Label>
+      <LegalEntitySelect id="t-property" site={site} value={form.property} onChange={(v) => setField('property', v)} />
       <div className="grid grid-cols-2 gap-2.5">
         <div>
-          <Label>Floor / Block</Label>
-          <input className={inputCls} {...bind('floor')} />
+          <Label htmlFor="t-floor">Floor / Area</Label>
+          <SiteLocationSelect id="t-floor" site={site} value={form.floor} onChange={(v) => setField('floor', v)} />
         </div>
         <div>
           <Label required>Department / Area</Label>

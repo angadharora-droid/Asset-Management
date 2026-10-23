@@ -33,7 +33,7 @@ export default function FilteredReport({ assets, config }) {
       Qty: e.qty,
       UOM: e.uom,
       Department: e.department,
-      Floor: e.floor || '',
+      'Floor / Area': e.floor || '',
       Location: e.location,
       Status: e.status,
       Condition: e.condition,

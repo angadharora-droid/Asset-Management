@@ -2,6 +2,7 @@
 // the assets already in memory — no extra API calls — so every report stays in
 // sync with the live register.
 import { assetSegments, codeLabel, rangeCode } from '../../utils/asset.js';
+import { getSiteCode } from '../../api/assetApi.js';
 
 // How many physical tags (codes) an entry covers.
 export const unitCount = (e) =>
@@ -117,7 +118,8 @@ export function distribution(counts) {
     .sort((a, b) => b.value - a.value);
 }
 
-// Excel export shared by every report: named sheets from row arrays.
+// Excel export shared by every report: named sheets from row arrays. The file
+// is prefixed with the open site's code.
 export async function exportSheets(fileBase, sheets) {
   const XLSX = await import('xlsx');
   const wb = XLSX.utils.book_new();
@@ -126,7 +128,7 @@ export async function exportSheets(fileBase, sheets) {
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), name.slice(0, 31));
   }
   const stamp = new Date().toISOString().slice(0, 10);
-  XLSX.writeFile(wb, `CPA_${fileBase}_${stamp}.xlsx`);
+  XLSX.writeFile(wb, `${getSiteCode() || 'CPA'}_${fileBase}_${stamp}.xlsx`);
 }
 
 export { codeLabel };

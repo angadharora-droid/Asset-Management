@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useSite } from '../../context/SiteContext.jsx';
 import { fmtDate, fmtDateTime } from '../../utils/format.js';
 import { rangeCode, assetSegments } from '../../utils/asset.js';
 import { Btn, conditionVariant, statusVariant } from '../ui.jsx';
@@ -39,24 +40,27 @@ function SummaryCell({ value, label, accent }) {
 }
 
 // Formal letterhead for the printable document.
-function SheetHeader({ generatedAt, periodLabel }) {
+function SheetHeader({ site, generatedAt, periodLabel }) {
   return (
     <div className="flex items-start justify-between gap-6 flex-wrap pb-4 mb-5 border-b-2 border-navy">
       <div className="flex items-center gap-3.5">
-        <div className="w-12 h-12 rounded-lg bg-navy text-gold-light flex items-center justify-center font-serif text-[17px] font-bold flex-none tracking-tight">
-          CPA
+        <div className="min-w-12 h-12 px-1.5 rounded-lg bg-navy text-gold-light flex items-center justify-center font-serif text-[17px] font-bold flex-none tracking-tight">
+          {site.code}
         </div>
         <div>
           <div className="text-[9.5px] font-bold uppercase tracking-[0.18em] text-gold">Final · Acceptance</div>
           <h2 className="text-[20px] leading-tight mt-0.5">Asset Handover Sign-Off Sheet</h2>
-          <div className="text-[11.5px] text-muted">Centre Point Amravati · Hariganga → CPH Transition</div>
+          <div className="text-[11.5px] text-muted">
+            {site.name}
+            {site.handover && ` · ${site.handover.from} → ${site.handover.to} Transition`}
+          </div>
         </div>
       </div>
       <table className="border-collapse text-[11px] [&_td]:py-[3px] [&_td:first-child]:pr-3 [&_td:first-child]:text-muted [&_td:first-child]:uppercase [&_td:first-child]:tracking-[0.05em] [&_td:first-child]:text-[9px] [&_td:first-child]:font-bold [&_td:first-child]:align-top">
         <tbody>
           <tr>
             <td>Document</td>
-            <td className="font-mono tnum text-navy">CPA/HANDOVER/SIGN-OFF</td>
+            <td className="font-mono tnum text-navy">{site.code}/HANDOVER/SIGN-OFF</td>
           </tr>
           <tr>
             <td>Generated</td>
@@ -99,6 +103,7 @@ function SigBox({ role }) {
 }
 
 export default function SignOff({ assets, reload }) {
+  const { site } = useSite();
   const [dateFilter, setDateFilter] = useState(ALL_DATES);
   const generatedAt = useMemo(() => fmtDateTime(new Date().toISOString()), []);
 
@@ -156,7 +161,7 @@ export default function SignOff({ assets, reload }) {
         id="signoff-print"
         className="bg-white border border-line rounded-xl p-5 sm:p-7 shadow-card print:border-0 print:shadow-none print:p-0"
       >
-        <SheetHeader generatedAt={generatedAt} periodLabel={periodLabel} />
+        <SheetHeader site={site} generatedAt={generatedAt} periodLabel={periodLabel} />
 
         <div className="flex flex-wrap gap-2.5 mb-5">
           <SummaryCell value={counts.entries} label="Entries" />
@@ -276,15 +281,15 @@ export default function SignOff({ assets, reload }) {
           <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-gold mb-1">Acceptance &amp; Authorisation</div>
           <div className="h-px bg-line mb-5" />
           <div className="grid grid-cols-2 gap-8">
-            <SigBox role="Hariganga Representative (Outgoing)" />
-            <SigBox role="CPH Representative (Receiving)" />
+            <SigBox role={site.handover ? `${site.handover.from} Representative (Outgoing)` : 'Outgoing Representative'} />
+            <SigBox role={site.handover ? `${site.handover.to} Representative (Receiving)` : 'Receiving Representative'} />
           </div>
         </div>
 
         {/* Footer */}
         <div className="mt-7 pt-3 border-t border-line text-[9px] text-muted flex justify-between flex-wrap gap-2">
           <span>Confidential · System-generated from the live asset register; subject to physical verification.</span>
-          <span className="tnum">Centre Point Amravati · Asset Handover Register · {generatedAt}</span>
+          <span className="tnum">{site.name} · Asset Handover Register · {generatedAt}</span>
         </div>
       </div>
     </div>

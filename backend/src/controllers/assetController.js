@@ -1,20 +1,23 @@
 import crypto from 'crypto';
-import Asset from '../models/Asset.js';
 import { findCategory, COUNTABLE_UOMS } from '../constants/categories.js';
 import { reserveSequence, peekSequence, releaseSequence, buildCode, pad } from '../utils/codeGenerator.js';
+
+// Every handler below runs behind the withSite middleware: req.models holds the
+// selected site's models and req.site the site itself.
 
 // Unguessable token used in public scan links (so codes can't be enumerated).
 export const newScanId = () => crypto.randomBytes(16).toString('base64url');
 
-// Backfill scanIds for any assets created before this feature.
-export async function ensureScanIds() {
+// Backfill scanIds for any assets created before this feature (one site's
+// Asset model at a time).
+export async function ensureScanIds(Asset, label = '') {
   const missing = await Asset.find({
     $or: [{ scanId: { $exists: false } }, { scanId: null }, { scanId: '' }],
   }).select('_id');
   for (const doc of missing) {
     await Asset.updateOne({ _id: doc._id }, { $set: { scanId: newScanId() } });
   }
-  if (missing.length) console.log(`🔖 Backfilled scan tokens for ${missing.length} asset(s).`);
+  if (missing.length) console.log(`🔖 ${label ? `[${label}] ` : ''}Backfilled scan tokens for ${missing.length} asset(s).`);
 }
 
 const CONDITION_VALUES = ['Good', 'Damaged', 'Not Working', 'Installed but Not Tested', 'Scrap / Not Usable'];
@@ -54,7 +57,8 @@ function attachmentError(data) {
 
 // Human-readable code range for an asset sub-range, e.g. CPA.BNQ.BCH.0297–0300.
 function rangeStr(asset, from, to) {
-  const startCode = buildCode(asset.categoryCode, asset.itemCode, from);
+  const siteCode = String(asset.code).split('.')[0];
+  const startCode = buildCode(siteCode, asset.categoryCode, asset.itemCode, from);
   return from === to ? startCode : `${startCode}–${pad(to)}`;
 }
 
@@ -150,6 +154,7 @@ function validateBusinessRules(data) {
 // library as base64. The list carries counts instead; the complete record is
 // fetched per-asset (GET /assets/:code) when a detail view needs it.
 export async function listAssets(req, res) {
+  const { Asset } = req.models;
   // The blob-stripping $project MUST run before the $sort: sorting the raw
   // documents (with their inline base64 photos/documents) overflows Mongo's
   // 32MB in-memory sort limit once the register grows. allowDiskUse is a
@@ -172,7 +177,7 @@ export async function listAssets(req, res) {
 
 // GET /api/assets/:code
 export async function getAsset(req, res) {
-  const asset = await Asset.findOne({ code: req.params.code }).lean();
+  const asset = await req.models.Asset.findOne({ code: req.params.code }).lean();
   if (!asset) return res.status(404).json({ message: 'Asset not found' });
   res.json(asset);
 }
@@ -186,17 +191,18 @@ export async function nextCode(req, res) {
     return res.status(400).json({ message: 'A valid categoryCode and 3-letter itemCode are required.' });
   }
   const count = Math.max(1, Math.floor(Number(req.query.count) || 1));
-  const start = await peekSequence(`${categoryCode}.${itemCode}`, count);
+  const start = await peekSequence(req.models, `${categoryCode}.${itemCode}`, count);
   const end = start + count - 1;
   res.json({
-    code: buildCode(categoryCode, itemCode, start),
-    codeEnd: count > 1 ? buildCode(categoryCode, itemCode, end) : null,
+    code: buildCode(req.site.code, categoryCode, itemCode, start),
+    codeEnd: count > 1 ? buildCode(req.site.code, categoryCode, itemCode, end) : null,
     preview: true,
   });
 }
 
 // POST /api/assets
 export async function createAsset(req, res) {
+  const { Asset } = req.models;
   const body = req.body || {};
   const categoryCode = String(body.categoryCode || '').toUpperCase();
   const itemCode = String(body.itemCode || '').toUpperCase();
@@ -229,9 +235,9 @@ export async function createAsset(req, res) {
 
   // Reserve a unique sequential block atomically (one code per countable unit).
   const count = blockCount(data.qty, data.uom);
-  const { start, end } = await reserveSequence(`${categoryCode}.${itemCode}`, count);
-  const code = buildCode(categoryCode, itemCode, start);
-  const codeEnd = count > 1 ? buildCode(categoryCode, itemCode, end) : null;
+  const { start, end } = await reserveSequence(req.models, `${categoryCode}.${itemCode}`, count);
+  const code = buildCode(req.site.code, categoryCode, itemCode, start);
+  const codeEnd = count > 1 ? buildCode(req.site.code, categoryCode, itemCode, end) : null;
 
   // Build the verification breakdown (segments). A client may send `breakdown`
   // = [{qty, status, condition, functionalityChecked, remarks}] that must add up
@@ -326,7 +332,7 @@ export async function createAsset(req, res) {
     // back and answer with the entry the winner created.
     if (clientKey && err?.code === 11000 && err?.keyPattern?.clientKey) {
       try {
-        await releaseSequence(`${categoryCode}.${itemCode}`, start, end);
+        await releaseSequence(req.models, `${categoryCode}.${itemCode}`, start, end);
       } catch {
         // the numbers stay unused at worst
       }
@@ -355,7 +361,7 @@ export async function updateAsset(req, res) {
   const attachErr = attachmentError(data);
   if (attachErr) return res.status(400).json({ message: attachErr });
 
-  const existing = await Asset.findOne({ code: req.params.code });
+  const existing = await req.models.Asset.findOne({ code: req.params.code });
   if (!existing) return res.status(404).json({ message: 'Asset not found' });
 
   const merged = { ...existing.toObject(), ...data };
@@ -390,7 +396,7 @@ export async function updateAsset(req, res) {
 const STATUS_FIELDS = ['status', 'condition', 'functionalityChecked', 'accepted'];
 
 export async function updateStatus(req, res) {
-  const asset = await Asset.findOne({ code: req.params.code });
+  const asset = await req.models.Asset.findOne({ code: req.params.code });
   if (!asset) return res.status(404).json({ message: 'Asset not found' });
 
   const body = req.body || {};
@@ -491,7 +497,7 @@ export async function updateStatus(req, res) {
 // (per-unit serial number + remarks). Splits the unit out of its segment, like
 // the status update, and logs the change. Status/condition are NOT touched here.
 export async function updateTagDetails(req, res) {
-  const asset = await Asset.findOne({ code: req.params.code });
+  const asset = await req.models.Asset.findOne({ code: req.params.code });
   if (!asset) return res.status(404).json({ message: 'Asset not found' });
 
   const body = req.body || {};
@@ -584,7 +590,7 @@ export async function markLabelsPrinted(req, res) {
     ? req.body.codes.map((c) => String(c)).filter(Boolean).slice(0, 1000)
     : [];
   if (!codes.length) return res.status(400).json({ message: 'No entries given.' });
-  const r = await Asset.updateMany(
+  const r = await req.models.Asset.updateMany(
     { code: { $in: codes } },
     { $set: { labelsPrintedAt: new Date() } }
   );
@@ -593,7 +599,7 @@ export async function markLabelsPrinted(req, res) {
 
 // DELETE /api/assets/:code
 export async function deleteAsset(req, res) {
-  const asset = await Asset.findOneAndDelete({ code: req.params.code });
+  const asset = await req.models.Asset.findOneAndDelete({ code: req.params.code });
   if (!asset) return res.status(404).json({ message: 'Asset not found' });
 
   // Release the entry's code block so the next registration of the same
@@ -604,7 +610,7 @@ export async function deleteAsset(req, res) {
   const to = asset.seqEnd ?? (asset.codeEnd ? numOf(asset.codeEnd) : from);
   if (Number.isFinite(from) && Number.isFinite(to)) {
     try {
-      await releaseSequence(`${asset.categoryCode}.${asset.itemCode}`, from, to);
+      await releaseSequence(req.models, `${asset.categoryCode}.${asset.itemCode}`, from, to);
     } catch (err) {
       // The entry is already gone — a failed release only means its numbers
       // are not reused, so log it rather than failing the request.

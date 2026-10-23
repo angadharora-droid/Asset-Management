@@ -2,6 +2,7 @@ import axios from 'axios';
 
 const baseURL = import.meta.env.VITE_API_URL || '/api';
 const TOKEN_KEY = 'cpa_token';
+const SITE_KEY = 'cpa_site';
 
 const api = axios.create({ baseURL });
 
@@ -13,10 +14,32 @@ export function setToken(token) {
   else localStorage.removeItem(TOKEN_KEY);
 }
 
-// Attach the bearer token to every request.
+// The open site's code. Kept per browser tab (sessionStorage): a reload stays
+// on the same site, but a fresh tab starts at the site picker, so nobody logs
+// assets into yesterday's site by accident.
+export function getSiteCode() {
+  try {
+    return sessionStorage.getItem(SITE_KEY);
+  } catch {
+    return null;
+  }
+}
+export function setSiteCode(code) {
+  try {
+    if (code) sessionStorage.setItem(SITE_KEY, code);
+    else sessionStorage.removeItem(SITE_KEY);
+  } catch {
+    // storage blocked — the site still applies until the tab reloads
+  }
+}
+
+// Attach the bearer token and the open site to every request — the server
+// picks that site's register from X-Site.
 api.interceptors.request.use((config) => {
   const token = getToken();
   if (token) config.headers.Authorization = `Bearer ${token}`;
+  const site = getSiteCode();
+  if (site) config.headers['X-Site'] = site;
   return config;
 });
 
@@ -49,6 +72,7 @@ export function unwrap(promise) {
     });
 }
 
+export const getSites = () => unwrap(api.get('/sites'));
 export const getAssets = () => unwrap(api.get('/assets'));
 export const getAsset = (code) => unwrap(api.get(`/assets/${encodeURIComponent(code)}`));
 export const createAsset = (payload) => unwrap(api.post('/assets', payload));

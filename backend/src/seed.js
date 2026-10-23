@@ -4,6 +4,7 @@
 //   npm run seed
 //
 // WARNING: this clears the existing Asset and Counter collections first.
+// It seeds the default site (CPA) register only.
 
 import crypto from 'crypto';
 import dotenv from 'dotenv';
@@ -14,6 +15,7 @@ import Asset from './models/Asset.js';
 import Counter from './models/Counter.js';
 import FreedBlock from './models/FreedBlock.js';
 import { findCategory, COUNTABLE_UOMS } from './constants/categories.js';
+import { DEFAULT_SITE } from './constants/sites.js';
 import { reserveSequence, buildCode } from './utils/codeGenerator.js';
 
 dotenv.config();
@@ -61,9 +63,9 @@ async function run() {
   for (const s of SAMPLES) {
     const cat = findCategory(s.categoryCode);
     const n = COUNTABLE_UOMS.includes(s.uom) && (s.qty || 1) > 1 ? Math.floor(s.qty) : 1;
-    const { start, end } = await reserveSequence(`${s.categoryCode}.${s.itemCode}`, n);
-    const code = buildCode(s.categoryCode, s.itemCode, start);
-    const codeEnd = n > 1 ? buildCode(s.categoryCode, s.itemCode, end) : null;
+    const { start, end } = await reserveSequence({ Counter, FreedBlock }, `${s.categoryCode}.${s.itemCode}`, n);
+    const code = buildCode(DEFAULT_SITE, s.categoryCode, s.itemCode, start);
+    const codeEnd = n > 1 ? buildCode(DEFAULT_SITE, s.categoryCode, s.itemCode, end) : null;
     const segments = [
       {
         from: start, to: end,

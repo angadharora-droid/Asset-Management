@@ -3,6 +3,11 @@ export default {
   content: ['./index.html', './src/**/*.{js,jsx}'],
   theme: {
     extend: {
+      screens: {
+        // Low-height screens (laptops at 125–150% scaling): `short:` tightens
+        // vertical spacing so the sidebar fits without hiding its footer.
+        short: { raw: '(max-height: 760px)' },
+      },
       colors: {
         navy: { DEFAULT: '#16313F', light: '#234357', deep: '#102530' },
         gold: { DEFAULT: '#B8862F', light: '#D8A94F', soft: '#EBD9B4' },

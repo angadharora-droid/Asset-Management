@@ -21,7 +21,7 @@ function MixBar({ counts, variantFor }) {
 }
 
 // Generic "group the register by one field" report. Drives the Category,
-// Department, Floor, Room, Property/Ownership, Classification, Custodian,
+// Department, Floor / Area, Room, Legal Entity, Classification, Custodian,
 // Status, Condition and Acceptance reports — they differ only in config.
 //
 // config: { title, icon, keyFn, labelFn?, fallback?, groupNoun, mix }
@@ -65,9 +65,9 @@ export default function GroupedReport({ assets, config }) {
         'Asset Name': e.name,
         Qty: e.qty,
         UOM: e.uom,
-        Property: e.property || '',
+        'Legal Entity': e.property || '',
         Department: e.department,
-        Floor: e.floor || '',
+        'Floor / Area': e.floor || '',
         Location: e.location,
         Status: e.status,
         Condition: e.condition,

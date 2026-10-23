@@ -1,8 +1,7 @@
 // Canonical asset catalogue — kept server-side so generated codes and category
 // names are authoritative (the client sends a category code, the server resolves
-// the display name). This mirrors the list used on the frontend.
-
-export const UNIT_PREFIX = 'CPA';
+// the display name). This mirrors the list used on the frontend. Codes are
+// prefixed with the site code (constants/sites.js).
 
 export const CATEGORIES = [
   { name: 'Kitchen Equipment', code: 'KIT', items: ['OVN:Oven', 'GRL:Grill/Griddle', 'FRZ:Freezer', 'FRD:Fridge', 'MIX:Mixer', 'DSH:Dishwasher', 'STV:Stove/Range', 'BLN:Blender'] },

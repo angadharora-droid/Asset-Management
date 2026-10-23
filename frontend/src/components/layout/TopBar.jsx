@@ -1,7 +1,7 @@
-import { IconUsers, IconLogout } from '../Icon.jsx';
+import { IconUsers, IconLogout, IconSwitch } from '../Icon.jsx';
 
 // Compact mobile top bar (desktop uses the Sidebar instead).
-export default function TopBar({ assets, user, isAdmin, onLogout, onManageUsers }) {
+export default function TopBar({ assets, user, isAdmin, onLogout, onManageUsers, site, onSwitchSite }) {
   return (
     <div className="lg:hidden ink-panel text-white sticky top-0 z-30 shadow-card">
       <div className="px-4 py-3 flex items-center justify-between gap-3">
@@ -15,6 +15,17 @@ export default function TopBar({ assets, user, isAdmin, onLogout, onManageUsers 
           <h1 className="font-serif text-[17px] text-white leading-tight mt-0.5 truncate">
             Asset Handover Register
           </h1>
+          {site && (
+            <button
+              onClick={onSwitchSite}
+              title="Switch to another site"
+              className="max-w-full inline-flex items-center gap-1.5 text-[11.5px] font-semibold text-gold-light mt-0.5
+                         focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-light rounded"
+            >
+              <IconSwitch size={13} className="flex-none" />
+              <span className="truncate">{site.code} · {site.name}</span>
+            </button>
+          )}
           {user && <div className="text-[11px] text-white/55 truncate">{user.name} · {user.role}</div>}
         </div>
 

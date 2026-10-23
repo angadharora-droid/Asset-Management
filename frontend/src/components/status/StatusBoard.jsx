@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { STATUS_OPTIONS } from '../../constants/categories.js';
+import { useSite } from '../../context/SiteContext.jsx';
 import { codeLabel, rangeCode, resolveUnitQuery } from '../../utils/asset.js';
 import {
   Badge, Card, Skeleton, EmptyState, inputCls, selectCls, statusVariant, conditionVariant,
@@ -10,6 +11,7 @@ import Tag from '../Tag.jsx';
 import StatusUpdateModal from './StatusUpdateModal.jsx';
 
 export default function StatusBoard({ assets, loading, reload }) {
+  const { site } = useSite();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [open, setOpen] = useState(null); // { code, unit }
@@ -36,7 +38,7 @@ export default function StatusBoard({ assets, loading, reload }) {
       <PageHeader
         eyebrow="Operations"
         title="Update Status"
-        subtitle="Search a tag number (e.g. CPA.BNQ.BCH.0297 or just 297) to update one unit, or open a batch to update a sub-range. Every change is logged."
+        subtitle={`Search a tag number (e.g. ${site.code}.BNQ.BCH.0297 or just 297) to update one unit, or open a batch to update a sub-range. Every change is logged.`}
       />
 
       <div className="flex gap-2 flex-wrap mb-3">

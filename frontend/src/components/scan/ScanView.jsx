@@ -125,7 +125,7 @@ export default function ScanView({ scanId, unit }) {
         ) : null}
 
         <div className="text-center text-2xs text-muted mt-5 uppercase tracking-wider">
-          Centre Point Amravati · Asset Handover Register
+          {data?.site?.name ? `${data.site.name} · ` : ''}Asset Handover Register
         </div>
       </div>
     </div>

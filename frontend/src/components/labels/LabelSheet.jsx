@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { rangeCode, codeLabel, scanUrl } from '../../utils/asset.js';
 import { markLabelsPrinted } from '../../api/assetApi.js';
+import { useSite } from '../../context/SiteContext.jsx';
 import { Btn } from '../ui.jsx';
 import { IconPrinter, IconClose } from '../Icon.jsx';
 import Qr from '../Qr.jsx';
@@ -34,11 +35,13 @@ const COL_MM = LIVE.w - QR_MM - GAP; // the text takes all the rest
 
 const MM_PT = 72 / 25.4;
 const PX_MM = 96 / 25.4;
-// Type ramp as multiples of the code's size, and the stacked height of all six
-// lines at leading-tight (1.25) — code, name, department, location, the
-// "Property of <owner>" line, and the hotel name.
+// Type ramp as multiples of the code's size, and the stacked height of every
+// line at leading-tight (1.25) — code, name, department, location, the
+// "Property of <legal entity>" line (which may wrap to two), and the site name.
 const RAMP = { code: 1, name: 1, detail: 0.94, brand: 0.69 };
-const STACK = 1.25 * (RAMP.code + RAMP.name + RAMP.detail * 2 + RAMP.brand * 2);
+const STACK = 1.25 * (RAMP.code + RAMP.name + RAMP.detail * 2 + RAMP.brand * 3);
+// Rough advance of one uppercase, tracking-wider character, in em.
+const CAPS_EM = 0.7;
 
 // How many physical tags an entry covers.
 const unitsOf = (a) => (a?.seqStart != null && a?.seqEnd != null ? a.seqEnd - a.seqStart + 1 : 1);
@@ -52,6 +55,7 @@ const unitsOf = (a) => (a?.seqStart != null && a?.seqEnd != null ? a.seqEnd - a.
 // print run the covered entries are marked printed on the server (best-effort)
 // and `onPrinted` fires so the register can refresh its "not printed" state.
 export default function LabelSheet({ asset, assets, onClose, onPrinted }) {
+  const { site } = useSite();
   const list = useMemo(
     () => (Array.isArray(assets) && assets.length ? assets : asset ? [asset] : []),
     [asset, assets]
@@ -105,6 +109,13 @@ export default function LabelSheet({ asset, assets, onClose, onPrinted }) {
     (LIVE.h * MM_PT) / STACK
   );
   const ptOf = (r) => `${+(codePt * r).toFixed(2)}pt`;
+  // The site name stays on one line: a long one is set a little smaller to fit
+  // the column (never below 80% of the brand size — past that it truncates).
+  const brandPt = codePt * RAMP.brand;
+  const sitePt = Math.max(
+    brandPt * 0.8,
+    Math.min(brandPt, (COL_MM * 0.96 * MM_PT) / (site.name.length * CAPS_EM))
+  );
 
   // The tags to render: a chosen sub-range for a single entry, or every unit of
   // every entry in a batch, capped at MAX per print run.
@@ -241,7 +252,7 @@ export default function LabelSheet({ asset, assets, onClose, onPrinted }) {
                 <div className="truncate" style={{ fontSize: ptOf(RAMP.detail) }}>{a.location}</div>
                 {a.property && (
                   <div
-                    className="uppercase tracking-wider truncate"
+                    className="uppercase tracking-wider line-clamp-2 break-words"
                     style={{ fontSize: ptOf(RAMP.brand), marginTop: `${(INSET * 0.16).toFixed(2)}mm` }}
                   >
                     Property of {a.property}
@@ -250,11 +261,11 @@ export default function LabelSheet({ asset, assets, onClose, onPrinted }) {
                 <div
                   className="uppercase tracking-wider truncate"
                   style={{
-                    fontSize: ptOf(RAMP.brand),
+                    fontSize: `${+sitePt.toFixed(2)}pt`,
                     marginTop: a.property ? 0 : `${(INSET * 0.16).toFixed(2)}mm`,
                   }}
                 >
-                  Centre Point Amravati
+                  {site.name}
                 </div>
               </div>
             </div>

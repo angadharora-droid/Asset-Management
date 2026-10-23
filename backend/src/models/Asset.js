@@ -61,7 +61,9 @@ const historySchema = new mongoose.Schema(
   { _id: false }
 );
 
-const assetSchema = new mongoose.Schema(
+// One register per site: the default site uses the model exported below, every
+// other site compiles this schema on its own database (config/siteDb.js).
+export const assetSchema = new mongoose.Schema(
   {
     // Identity (server-generated, immutable)
     code: { type: String, required: true, unique: true, index: true }, // first/start code
@@ -83,8 +85,10 @@ const assetSchema = new mongoose.Schema(
     uom: { type: String, default: 'Nos' },
 
     // Where
-    property: { type: String, default: '', trim: true }, // property / site the asset belongs to
-    floor: { type: String, default: '', trim: true },
+    // Owner: the legal entity the asset belongs to (older CPA entries hold
+    // "Centre Point" / "Hariganga" from before legal entities were listed).
+    property: { type: String, default: '', trim: true },
+    floor: { type: String, default: '', trim: true }, // site location (floor / block / area)
     department: { type: String, required: true },
     location: { type: String, required: true, trim: true },
 

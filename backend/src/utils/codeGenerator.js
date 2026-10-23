@@ -1,14 +1,14 @@
-import Counter from '../models/Counter.js';
-import FreedBlock from '../models/FreedBlock.js';
-import Asset from '../models/Asset.js';
-import { UNIT_PREFIX } from '../constants/categories.js';
+// Every function here works on ONE site's register: pass that site's models
+// (config/siteDb.js) — counters and parked holes are kept per site database.
 
 export function pad(n) {
   return String(n).padStart(4, '0');
 }
 
-export function buildCode(categoryCode, itemCode, seq) {
-  return `${UNIT_PREFIX}.${categoryCode}.${itemCode}.${pad(seq)}`;
+// e.g. buildCode('CPA', 'FFE', 'CHR', 1) → "CPA.FFE.CHR.0001". The prefix is
+// the site code, so the same category.item numbers independently per site.
+export function buildCode(siteCode, categoryCode, itemCode, seq) {
+  return `${siteCode}.${categoryCode}.${itemCode}.${pad(seq)}`;
 }
 
 // Atomically reserve a BLOCK of `count` sequential numbers for a category.item
@@ -18,7 +18,7 @@ export function buildCode(categoryCode, itemCode, seq) {
 // big enough for the block is claimed (findOneAndDelete is atomic, so two
 // simultaneous saves can never grab the same hole). Only when no hole fits does
 // the tail counter advance — a single $inc, so concurrent saves never overlap.
-export async function reserveSequence(key, count = 1) {
+export async function reserveSequence({ Counter, FreedBlock }, key, count = 1) {
   const n = Math.max(1, Math.floor(count));
 
   const hole = await FreedBlock.findOneAndDelete(
@@ -44,7 +44,7 @@ export async function reserveSequence(key, count = 1) {
 
 // Peek the next start number WITHOUT reserving it (for the live UI preview).
 // Mirrors reserveSequence: a parked hole that fits wins over the tail counter.
-export async function peekSequence(key, count = 1) {
+export async function peekSequence({ Counter, FreedBlock }, key, count = 1) {
   const n = Math.max(1, Math.floor(count));
   const hole = await FreedBlock.findOne({ key, size: { $gte: n } }).sort({ from: 1 }).lean();
   if (hole) return hole.from;
@@ -56,7 +56,7 @@ export async function peekSequence(key, count = 1) {
 // exist. Runs at startup so gaps left by deletions made BEFORE the reuse
 // feature existed (when nothing recorded them) become reusable too, and any
 // key whose entries were all deleted starts again from 0001.
-export async function reconcileSequences() {
+export async function reconcileSequences({ Asset, Counter, FreedBlock }, label = '') {
   const assets = await Asset.find()
     .select('code codeEnd seqStart seqEnd categoryCode itemCode')
     .lean();
@@ -98,7 +98,7 @@ export async function reconcileSequences() {
       );
     }
   }
-  if (changed) console.log(`🔢 Reconciled ${changed} code counter(s) to match the register.`);
+  if (changed) console.log(`🔢 ${label ? `[${label}] ` : ''}Reconciled ${changed} code counter(s) to match the register.`);
 }
 
 // Release a deleted entry's block [from, to] so its numbers are reused.
@@ -106,7 +106,7 @@ export async function reconcileSequences() {
 // ends at the counter tail, rewind the counter instead of parking — the next
 // entry then starts from `from` again — and keep absorbing holes that newly
 // touch the tail. Otherwise the block is parked for reserveSequence to refill.
-export async function releaseSequence(key, from, to) {
+export async function releaseSequence({ Counter, FreedBlock }, key, from, to) {
   from = Math.floor(Number(from));
   to = Math.floor(Number(to));
   if (!Number.isFinite(from) || !Number.isFinite(to) || from < 1 || to < from) return;

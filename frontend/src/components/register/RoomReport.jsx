@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { codeLabel } from '../../utils/asset.js';
 import { fmtDate, fmtDateTime, inr } from '../../utils/format.js';
+import { useSite } from '../../context/SiteContext.jsx';
 import { Badge, Btn, inputCls, statusVariant, conditionVariant, EmptyState } from '../ui.jsx';
 import { IconSearch, IconDownload, IconMapPin, IconClipboardList, IconPrinter } from '../Icon.jsx';
 import Modal from '../Modal.jsx';
@@ -23,6 +24,7 @@ function roomKey(loc) {
 // Room-wise report: every room (exact location) with the entries inside it,
 // unit counts and estimated value — searchable, exportable to Excel.
 export default function RoomReport({ assets, onClose }) {
+  const { site } = useSite();
   const [search, setSearch] = useState('');
 
   const rooms = useMemo(() => {
@@ -83,8 +85,8 @@ export default function RoomReport({ assets, onClose }) {
         Qty: e.qty,
         UOM: e.uom,
         Department: e.department,
-        Floor: e.floor,
-        Property: e.property || '',
+        'Floor / Area': e.floor,
+        'Legal Entity': e.property || '',
         'Physical Status': e.status,
         Condition: e.condition,
         'Est. Value': e.estimatedValue ?? '',
@@ -93,7 +95,7 @@ export default function RoomReport({ assets, onClose }) {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(summary), 'Room Summary');
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(detail), 'Room Detail');
-    XLSX.writeFile(wb, `CPA_Room_Report_${fmtDate(new Date().toISOString())}.xlsx`);
+    XLSX.writeFile(wb, `${site.code}_Room_Report_${fmtDate(new Date().toISOString())}.xlsx`);
   }
 
   return (
@@ -188,7 +190,7 @@ export default function RoomReport({ assets, onClose }) {
         <div id="roomreport-print" className="hidden text-ink">
           <h2 className="font-serif text-[20px] text-navy m-0">Room-wise Asset Report</h2>
           <div className="text-[11px] mt-1">
-            Centre Point Amravati · Asset Handover Register
+            {site.name} · Asset Handover Register
           </div>
           <div className="text-[10px] text-muted mt-0.5 tnum">
             Generated {fmtDateTime(new Date().toISOString())} · {filtered.length}{' '}

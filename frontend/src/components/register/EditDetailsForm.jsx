@@ -2,15 +2,17 @@ import { useEffect, useState } from 'react';
 import { updateAsset } from '../../api/assetApi.js';
 import { useToast } from '../../context/ToastContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
+import { useSite } from '../../context/SiteContext.jsx';
 import { suggestClassification } from '../../utils/classification.js';
 import { codeLabel } from '../../utils/asset.js';
 import {
-  DEPARTMENTS, PROPERTIES, VALUE_SOURCES, CLASSIFICATIONS, ACCEPTED_OPTIONS,
+  DEPARTMENTS, VALUE_SOURCES, CLASSIFICATIONS, ACCEPTED_OPTIONS,
 } from '../../constants/categories.js';
 import { SectionHead, Label, Btn, Banner, inputCls, selectCls } from '../ui.jsx';
 import { IconBox, IconMapPin, IconBanknote, IconShield, IconCamera, IconFile, IconCheck } from '../Icon.jsx';
 import PhotoUploader from '../entry/PhotoUploader.jsx';
 import DocumentUploader from '../entry/DocumentUploader.jsx';
+import { LegalEntitySelect, SiteLocationSelect } from '../entry/SiteFields.jsx';
 
 // Edit an existing entry from the Register. Everything is editable except the
 // identity (code / category / item type — the barcode is already issued) and
@@ -19,6 +21,7 @@ import DocumentUploader from '../entry/DocumentUploader.jsx';
 export default function EditDetailsForm({ asset, onCancel, onSaved }) {
   const showToast = useToast();
   const { user } = useAuth();
+  const { site } = useSite();
   const [form, setForm] = useState({
     // What it is
     name: asset.name || '',
@@ -138,15 +141,12 @@ export default function EditDetailsForm({ asset, onCancel, onSaved }) {
       <div className="mt-4">
         <SectionHead icon={<IconMapPin size={15} />}>Where</SectionHead>
       </div>
-      <Label className="!mt-0">Property</Label>
-      <select className={selectCls} {...bind('property')}>
-        <option value="">Select…</option>
-        {PROPERTIES.map((p) => <option key={p}>{p}</option>)}
-      </select>
+      <Label htmlFor="e-property" className="!mt-0">Asset of Legal Entity</Label>
+      <LegalEntitySelect id="e-property" site={site} value={form.property} onChange={(v) => setField('property', v)} />
       <div className="grid grid-cols-2 gap-2.5">
         <div>
-          <Label>Floor / Block</Label>
-          <input className={inputCls} {...bind('floor')} />
+          <Label htmlFor="e-floor">Floor / Area</Label>
+          <SiteLocationSelect id="e-floor" site={site} value={form.floor} onChange={(v) => setField('floor', v)} />
         </div>
         <div>
           <Label required>Department / Area</Label>

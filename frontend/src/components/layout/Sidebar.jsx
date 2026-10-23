@@ -1,7 +1,7 @@
 import { NAV_ITEMS } from './navItems.js';
 import { needsDetails } from '../../utils/asset.js';
 import { fmtDate } from '../../utils/format.js';
-import { IconUsers, IconLogout } from '../Icon.jsx';
+import { IconUsers, IconLogout, IconSwitch } from '../Icon.jsx';
 
 function dayLine(assets) {
   if (!assets.length) return 'Day 1 · awaiting first entry';
@@ -11,27 +11,44 @@ function dayLine(assets) {
   return `Day ${dayNum} · started ${dates[0]}`;
 }
 
-export default function Sidebar({ active, onChange, assets = [], user, isAdmin, onLogout }) {
+export default function Sidebar({ active, onChange, assets = [], user, isAdmin, onLogout, site, onSwitchSite }) {
   const pending = assets.filter(needsDetails).length;
 
+  // Brand and footer keep their size; only the nav shrinks (and scrolls) when
+  // the screen is short, so the account / log-out block is always reachable.
   return (
     <aside className="hidden lg:flex flex-col ink-panel text-white sticky top-0 h-dvh w-[264px] border-r border-white/5">
       {/* Brand */}
-      <div className="px-6 pt-7 pb-6">
-        <div className="flex items-center gap-2 mb-3">
+      <div className="flex-none px-6 pt-7 pb-5 short:pt-4 short:pb-3">
+        <div className="flex items-center gap-2 mb-3 short:mb-2">
           <span className="gold-rule" />
           <span className="text-2xs font-bold uppercase tracking-[0.18em] text-gold-light">
             Centre Point Hospitality
           </span>
         </div>
-        <h1 className="font-serif text-[22px] text-white leading-tight">
+        <h1 className="font-serif text-[22px] short:text-[19px] text-white leading-tight">
           Asset Handover<br />Register
         </h1>
-        <div className="text-[12px] text-white/55 mt-2">Hariganga → CPH · CPA</div>
+        {site && (
+          <button
+            onClick={onSwitchSite}
+            title="Switch to another site"
+            className="mt-3 short:mt-2 w-full text-left rounded-xl bg-white/5 hover:bg-white/10 px-3 py-2.5 short:py-2
+                       transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-light"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-2xs uppercase tracking-wider text-white/50 font-mono">Site · {site.code}</span>
+              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-gold-light">
+                <IconSwitch size={14} /> Switch
+              </span>
+            </div>
+            <div className="text-[13px] font-semibold text-white leading-snug mt-0.5">{site.name}</div>
+          </button>
+        )}
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-3 space-y-1" aria-label="Sections">
+      <nav className="flex-1 min-h-0 overflow-y-auto px-3 space-y-1" aria-label="Sections">
         {NAV_ITEMS.map(({ id, label, Icon }) => {
           const isActive = active === id;
           const showBadge = id === 'register' && pending > 0;
@@ -41,7 +58,7 @@ export default function Sidebar({ active, onChange, assets = [], user, isAdmin, 
               onClick={() => onChange(id)}
               aria-current={isActive ? 'page' : undefined}
               className={[
-                'group relative w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[13.5px] font-semibold',
+                'group relative w-full flex items-center gap-3 px-3.5 py-3 short:py-2 [@media(max-height:600px)]:py-1.5 rounded-xl text-[13.5px] font-semibold',
                 'transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-light',
                 isActive ? 'bg-white/10 text-white' : 'text-white/60 hover:text-white hover:bg-white/5',
               ].join(' ')}
@@ -65,8 +82,9 @@ export default function Sidebar({ active, onChange, assets = [], user, isAdmin, 
       </nav>
 
       {/* Footer: stat + account */}
-      <div className="px-5 py-4 border-t border-white/8 space-y-3">
-        <div className="px-1">
+      <div className="flex-none px-5 py-4 short:py-3 border-t border-white/8 space-y-3 short:space-y-2">
+        {/* The running count gives way on very short screens so the whole nav fits. */}
+        <div className="px-1 [@media(max-height:600px)]:hidden">
           <div className="flex items-baseline gap-2">
             <span className="font-serif text-[26px] text-gold-light leading-none tnum">{assets.length}</span>
             <span className="text-2xs uppercase tracking-wider text-white/55">assets logged</span>

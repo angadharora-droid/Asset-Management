@@ -3,6 +3,7 @@ import { CATEGORIES, STATUS_OPTIONS, itemsForCategory } from '../../constants/ca
 import { fmtDate, fmtDateTime } from '../../utils/format.js';
 import { needsDetails, codeLabel, codePrefix } from '../../utils/asset.js';
 import { useToast } from '../../context/ToastContext.jsx';
+import { useSite } from '../../context/SiteContext.jsx';
 import {
   Badge, Btn, inputCls, selectCls, statusVariant, conditionVariant, Skeleton, EmptyState,
 } from '../ui.jsx';
@@ -87,6 +88,7 @@ function AssetCard({ e, i, onOpen, onPrint }) {
 
 export default function Register({ assets, loading, reload }) {
   const showToast = useToast();
+  const { site } = useSite();
   const [search, setSearch] = useState('');
   const [catFilter, setCatFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -150,8 +152,8 @@ export default function Register({ assets, loading, reload }) {
     }
     const XLSX = await import('xlsx');
     const rows = assets.map((e) => ({
-      Code: codeLabel(e), Property: e.property || '', Category: e.category, 'Asset Name': e.name, Brand: e.brand, Model: e.model,
-      'Serial No.': e.serial, Size: e.size, Qty: e.qty, UOM: e.uom, Floor: e.floor,
+      Code: codeLabel(e), 'Legal Entity': e.property || '', Category: e.category, 'Asset Name': e.name, Brand: e.brand, Model: e.model,
+      'Serial No.': e.serial, Size: e.size, Qty: e.qty, UOM: e.uom, 'Floor / Area': e.floor,
       Department: e.department, Location: e.location, 'Physical Status': e.status, Condition: e.condition,
       'Functionality Checked': e.functionalityChecked, Remarks: e.remarks,
       'Estimated Value': e.estimatedValue ?? '', 'Value Source': e.valueSource,
@@ -166,7 +168,7 @@ export default function Register({ assets, loading, reload }) {
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Handover Register');
-    XLSX.writeFile(wb, `CPA_Asset_Handover_Register_${fmtDate(new Date().toISOString())}.xlsx`);
+    XLSX.writeFile(wb, `${site.code}_Asset_Handover_Register_${fmtDate(new Date().toISOString())}.xlsx`);
     showToast('Excel exported', 'success');
   }
 
@@ -176,7 +178,7 @@ export default function Register({ assets, loading, reload }) {
   return (
     <div>
       <PageHeader
-        eyebrow="Shared · Live"
+        eyebrow={`${site.code} · Shared · Live`}
         title="Asset Register"
         subtitle="Every logged asset, visible to the whole handover team in real time."
         actions={

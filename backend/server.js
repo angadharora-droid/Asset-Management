@@ -8,10 +8,14 @@ import assetRoutes from './src/routes/assetRoutes.js';
 import authRoutes from './src/routes/authRoutes.js';
 import publicRoutes from './src/routes/publicRoutes.js';
 import ssoRoutes from './src/routes/ssoRoutes.js';
+import siteRoutes from './src/routes/siteRoutes.js';
 import { protect } from './src/middleware/auth.js';
+import { withSite } from './src/middleware/site.js';
 import { ensureAdminUser } from './src/controllers/authController.js';
 import { ensureScanIds } from './src/controllers/assetController.js';
 import { reconcileSequences } from './src/utils/codeGenerator.js';
+import { SITES, DEFAULT_SITE } from './src/constants/sites.js';
+import { siteModels } from './src/config/siteDb.js';
 import { notFound, errorHandler } from './src/middleware/errorHandler.js';
 
 dotenv.config();
@@ -53,7 +57,8 @@ app.get('/api/health', (req, res) =>
 app.use('/api/auth', authRoutes);
 app.use('/api/public', publicRoutes); // read-only scan lookups (no auth)
 app.use('/api/sso', ssoRoutes); // user directory for the central sign-on admin (shared-secret guarded)
-app.use('/api/assets', protect, assetRoutes); // all asset routes require login
+app.use('/api/sites', protect, siteRoutes);
+app.use('/api/assets', protect, withSite, assetRoutes); // all asset routes require login; X-Site picks the register
 
 // ---- 404 + error handling ----
 app.use(notFound);
@@ -64,8 +69,19 @@ const PORT = process.env.PORT || 5000;
 connectDB()
   .then(async () => {
     await ensureAdminUser();
-    await ensureScanIds();
-    await reconcileSequences();
+    for (const site of SITES) {
+      const models = siteModels(site.code);
+      try {
+        await ensureScanIds(models.Asset, site.code);
+        await reconcileSequences(models, site.code);
+      } catch (err) {
+        // The default (CPA) register must be healthy to start. Any other
+        // site's database failing (e.g. the DB user lacks access to it) is
+        // logged and only that site's requests fail.
+        if (site.code === DEFAULT_SITE) throw err;
+        console.error(`⚠️  Site ${site.code} register unavailable:`, err.message);
+      }
+    }
     app.listen(PORT, () =>
       console.log(`✅ CPA Asset Handover API running on http://localhost:${PORT}`)
     );

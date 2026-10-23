@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createAsset, getNextCode } from '../../api/assetApi.js';
 import { useToast } from '../../context/ToastContext.jsx';
+import { useSite } from '../../context/SiteContext.jsx';
 import {
   CATEGORIES,
   DEPARTMENTS,
-  PROPERTIES,
   UOM_OPTIONS,
   STATUS_OPTIONS,
   CONDITION_OPTIONS,
@@ -22,6 +22,7 @@ import PageHeader from '../layout/PageHeader.jsx';
 import PhotoUploader from './PhotoUploader.jsx';
 import DocumentUploader from './DocumentUploader.jsx';
 import ConditionSplit from './ConditionSplit.jsx';
+import { LegalEntitySelect, SiteLocationSelect } from './SiteFields.jsx';
 import LabelSheet from '../labels/LabelSheet.jsx';
 
 // Unique key for one form submission. Retries after a network error reuse the
@@ -41,7 +42,10 @@ const EMPTY = {
 
 export default function EntryForm({ onSaved, assets = [] }) {
   const showToast = useToast();
-  const [form, setForm] = useState(() => ({ ...EMPTY }));
+  const { site } = useSite();
+  // A site with a single legal entity starts with it chosen.
+  const defaultEntity = site.legalEntities.length === 1 ? site.legalEntities[0] : '';
+  const [form, setForm] = useState(() => ({ ...EMPTY, property: defaultEntity }));
   const [photos, setPhotos] = useState([]);
   const [documents, setDocuments] = useState([]);
   const [split, setSplit] = useState(false);
@@ -109,7 +113,7 @@ export default function EntryForm({ onSaved, assets = [] }) {
   function copyFrom(a) {
     setForm({
       ...EMPTY,
-      property: a.property || '',
+      property: a.property || defaultEntity,
       floor: a.floor || '',
       department: a.department || '',
       location: a.location || '',
@@ -206,14 +210,17 @@ export default function EntryForm({ onSaved, assets = [] }) {
   return (
     <form onSubmit={handleSubmit}>
       <PageHeader
-        eyebrow="Stage 1 of 2 · Physical Capture"
+        eyebrow={`${site.code} · Stage 1 of 2 · Physical Capture`}
         title="Log a New Asset"
         subtitle="Record where it is, what it is, its condition and photos. Value, accounting class and custody are added later from the Register."
       />
 
-      <div className="lg:grid lg:grid-cols-[1fr_300px] lg:gap-8 lg:items-start">
-        {/* MAIN COLUMN */}
-        <div>
+      {/* The tag/save rail only sits beside the form from xl up — next to the
+          sidebar on a laptop it squeezed the form into a narrow column. */}
+      <div className="xl:grid xl:grid-cols-[1fr_300px] xl:gap-8 xl:items-start">
+        {/* MAIN COLUMN (min-w-0 keeps the recent-additions strip scrolling
+            inside it instead of widening the page) */}
+        <div className="min-w-0">
           {/* 0 — Quick fill from a recent addition */}
           {recent.length > 0 && (
             <Card>
@@ -246,19 +253,23 @@ export default function EntryForm({ onSaved, assets = [] }) {
 
           {/* 1 — Where */}
           <Card>
-            <SectionHead icon={<IconMapPin size={15} />}>Where</SectionHead>
+            <SectionHead icon={<IconMapPin size={15} />}>Where · {site.name}</SectionHead>
             <Label htmlFor="f-property" className="!mt-0">
-              Property
-              <span className="block font-normal text-muted text-[11.5px] mt-px">Which property is this asset being registered under?</span>
+              Asset of Legal Entity
+              <span className="block font-normal text-muted text-[11.5px] mt-px">
+                Which legal entity owns this asset? {site.code}&rsquo;s entities are listed first.
+              </span>
             </Label>
-            <select id="f-property" className={selectCls} {...bind('property')}>
-              <option value="">Select…</option>
-              {PROPERTIES.map((p) => <option key={p}>{p}</option>)}
-            </select>
+            <LegalEntitySelect
+              id="f-property"
+              site={site}
+              value={form.property}
+              onChange={(v) => setField('property', v)}
+            />
             <div className="grid grid-cols-2 gap-2.5">
               <div>
-                <Label htmlFor="f-floor">Floor / Block</Label>
-                <input id="f-floor" className={inputCls} placeholder="e.g. 2nd Floor" {...bind('floor')} />
+                <Label htmlFor="f-floor">Floor / Area</Label>
+                <SiteLocationSelect id="f-floor" site={site} value={form.floor} onChange={(v) => setField('floor', v)} />
               </div>
               <div>
                 <Label htmlFor="f-dept" required>Department / Area</Label>
@@ -305,9 +316,9 @@ export default function EntryForm({ onSaved, assets = [] }) {
               </div>
             </div>
 
-            {/* inline brass preview (mobile only — desktop shows it in the rail) */}
+            {/* inline brass preview (below xl — wider screens show it in the rail) */}
             {preview && (
-              <div className="lg:hidden mt-3 animate-scale-in">
+              <div className="xl:hidden mt-3 animate-scale-in">
                 <Tag
                   code={previewLabel}
                   label={tagCount > 1 ? `${tagCount} tags · next available block` : 'Auto-generated code · next available'}
@@ -439,8 +450,8 @@ export default function EntryForm({ onSaved, assets = [] }) {
 
           {error && <Banner tone="error" role="alert">{error}</Banner>}
 
-          {/* mobile floating submit */}
-          <div className="lg:hidden sticky bottom-0 -mx-4 px-4 pt-4 pb-3 bg-gradient-to-t from-cream via-cream/95 to-transparent">
+          {/* floating submit (below xl — wider screens use the rail) */}
+          <div className="xl:hidden sticky bottom-0 -mx-4 px-4 pt-4 pb-3 bg-gradient-to-t from-cream via-cream/95 to-transparent">
             {submitBtn}
             {lastSaved && <div className="text-[11.5px] text-muted text-center pt-2 tnum">{lastSaved}</div>}
             {savedAsset && (
@@ -452,7 +463,7 @@ export default function EntryForm({ onSaved, assets = [] }) {
         </div>
 
         {/* DESKTOP RAIL */}
-        <aside className="hidden lg:block sticky top-8 space-y-4">
+        <aside className="hidden xl:block sticky top-8 space-y-4">
           <div className="bg-paper border border-line rounded-xl p-4 shadow-card">
             <div className="text-2xs font-bold uppercase tracking-[0.14em] text-gold mb-3">
               {tagCount > 1 ? `Asset Tags · ${tagCount}` : 'Asset Tag'}

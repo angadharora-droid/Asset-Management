@@ -1,4 +1,5 @@
-import Asset from '../models/Asset.js';
+import { SITES } from '../constants/sites.js';
+import { siteModels } from '../config/siteDb.js';
 
 // GET /api/public/asset/:scanId?unit=N  — PUBLIC, read-only.
 // Looked up ONLY by the unguessable scan token (never by the human code), so
@@ -9,7 +10,17 @@ export async function getPublicAsset(req, res) {
   const scanId = String(req.params.scanId || '').trim();
   if (!scanId) return res.status(404).json({ message: 'Tag not found.' });
 
-  const asset = await Asset.findOne({ scanId }).lean();
+  // Tag links carry no site, so look in every site's register (CPA first —
+  // that is where the tags printed before sites existed live).
+  let asset = null;
+  let site = null;
+  for (const s of SITES) {
+    asset = await siteModels(s.code).Asset.findOne({ scanId }).lean();
+    if (asset) {
+      site = s;
+      break;
+    }
+  }
   if (!asset) return res.status(404).json({ message: 'Tag not found.' });
 
   // Resolve the targeted unit (defaults to the first), validated to the range.
@@ -66,5 +77,5 @@ export async function getPublicAsset(req, res) {
       }
     : null;
 
-  res.json({ asset: pub, unit, segment: seg });
+  res.json({ asset: pub, unit, segment: seg, site: { code: site.code, name: site.name } });
 }

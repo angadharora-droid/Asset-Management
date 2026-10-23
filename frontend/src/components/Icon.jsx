@@ -179,6 +179,20 @@ export const IconMapPin = (p) => (
   </Svg>
 );
 
+export const IconBuilding = (p) => (
+  <Svg {...p}>
+    <path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z" />
+    <path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2" />
+    <path d="M10 6h4M10 10h4M10 14h4M10 18h4" />
+  </Svg>
+);
+
+export const IconSwitch = (p) => (
+  <Svg {...p}>
+    <path d="m8 3-4 4 4 4M4 7h16M16 21l4-4-4-4M20 17H4" />
+  </Svg>
+);
+
 export const IconBanknote = (p) => (
   <Svg {...p}>
     <rect x="2" y="6" width="20" height="12" rx="2" />

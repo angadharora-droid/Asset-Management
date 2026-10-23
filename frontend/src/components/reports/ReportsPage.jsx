@@ -62,9 +62,9 @@ const SECTIONS = [
         ...grouped({ title: 'Room-wise Report', groupNoun: 'Room', mix: 'status', fallback: '(no room recorded)', fileBase: 'Room_Report', keyFn: (a) => roomKey(a.location), labelFn: (a) => String(a.location || '').trim() }),
       },
       {
-        id: 'floor', label: 'Floor-wise Report', icon: IconBox,
-        desc: 'Assets grouped by floor / level.',
-        ...grouped({ title: 'Floor-wise Report', groupNoun: 'Floor', mix: 'condition', fileBase: 'Floor_Report', keyFn: (a) => a.floor }),
+        id: 'floor', label: 'Floor / Area Report', icon: IconBox,
+        desc: 'Assets grouped by the site location — floor, block or area.',
+        ...grouped({ title: 'Floor / Area Report', groupNoun: 'Floor / Area', mix: 'condition', fileBase: 'Floor_Area_Report', keyFn: (a) => a.floor }),
       },
       {
         id: 'department', label: 'Department-wise Report', icon: IconUsers,
@@ -72,9 +72,9 @@ const SECTIONS = [
         ...grouped({ title: 'Department-wise Report', groupNoun: 'Department', mix: 'status', fileBase: 'Department_Report', keyFn: (a) => a.department }),
       },
       {
-        id: 'property', label: 'Ownership Report', icon: IconShield,
-        desc: 'Split by property / owner (Centre Point vs Hariganga).',
-        ...grouped({ title: 'Ownership Report', groupNoun: 'Property', mix: 'condition', fileBase: 'Ownership_Report', keyFn: (a) => a.property }),
+        id: 'property', label: 'Legal Entity Report', icon: IconShield,
+        desc: 'Split by the legal entity that owns each asset.',
+        ...grouped({ title: 'Legal Entity Report', groupNoun: 'Legal Entity', mix: 'condition', fileBase: 'Legal_Entity_Report', keyFn: (a) => a.property }),
       },
     ],
   },

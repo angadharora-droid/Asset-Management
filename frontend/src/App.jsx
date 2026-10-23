@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from './context/AuthContext.jsx';
+import { useSite } from './context/SiteContext.jsx';
 import { useAssets } from './hooks/useAssets.js';
 import Sidebar from './components/layout/Sidebar.jsx';
 import TopBar from './components/layout/TopBar.jsx';
@@ -13,6 +14,7 @@ import SignOff from './components/signoff/SignOff.jsx';
 import UsersPage from './components/auth/UsersPage.jsx';
 import Login from './components/auth/Login.jsx';
 import ScanView from './components/scan/ScanView.jsx';
+import SitePicker from './components/sites/SitePicker.jsx';
 import { Banner, Btn } from './components/ui.jsx';
 import { IconRefresh, IconSpinner } from './components/Icon.jsx';
 
@@ -29,11 +31,13 @@ function Splash() {
 
 function AuthedApp() {
   const { user, isAdmin, logout } = useAuth();
+  const { site, selectSite } = useSite();
   const [tab, setTab] = useState('entry');
   const { assets, loading, error, reload } = useAssets();
 
   // Non-admins can't reach the Users screen.
   const activeTab = tab === 'users' && !isAdmin ? 'entry' : tab;
+  const switchSite = () => selectSite(null);
 
   return (
     <div className="lg:grid lg:grid-cols-[264px_1fr] min-h-dvh">
@@ -44,10 +48,22 @@ function AuthedApp() {
         user={user}
         isAdmin={isAdmin}
         onLogout={logout}
+        site={site}
+        onSwitchSite={switchSite}
       />
 
-      <div className="flex flex-col min-h-dvh paper-bg">
-        <TopBar assets={assets} user={user} isAdmin={isAdmin} onLogout={logout} onManageUsers={() => setTab('users')} />
+      {/* min-w-0: without it a wide child (e.g. the recent-additions strip)
+          stretches this grid column past the viewport on laptop screens. */}
+      <div className="flex flex-col min-h-dvh min-w-0 paper-bg">
+        <TopBar
+          assets={assets}
+          user={user}
+          isAdmin={isAdmin}
+          onLogout={logout}
+          onManageUsers={() => setTab('users')}
+          site={site}
+          onSwitchSite={switchSite}
+        />
 
         <main className="flex-1 w-full max-w-[1080px] mx-auto px-4 sm:px-6 lg:px-10 pt-5 lg:pt-8 pb-28 lg:pb-14">
           {error && (
@@ -96,8 +112,12 @@ function useScanRoute() {
 export default function App() {
   const scan = useScanRoute();
   const { user, loading } = useAuth();
+  const { site } = useSite();
   if (scan) return <ScanView scanId={scan.scanId} unit={scan.unit} />;
   if (loading) return <Splash />;
   if (!user) return <Login />;
-  return <AuthedApp />;
+  if (!site) return <SitePicker />;
+  // Keyed by site: switching sites remounts the whole workspace, so nothing
+  // loaded from one site's register carries over into another's.
+  return <AuthedApp key={site.code} />;
 }

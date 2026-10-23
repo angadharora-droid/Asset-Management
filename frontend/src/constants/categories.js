@@ -1,8 +1,7 @@
 // Mirror of the server-side catalogue. The client uses it to drive the
 // category/item dropdowns and the live code preview; the server is still the
-// source of truth for the final generated code.
-
-export const UNIT_PREFIX = 'CPA';
+// source of truth for the final generated code. Codes are prefixed with the
+// site code (constants/sites.js).
 
 export const CATEGORIES = [
   { name: 'Kitchen Equipment', code: 'KIT', items: ['OVN:Oven', 'GRL:Grill/Griddle', 'FRZ:Freezer', 'FRD:Fridge', 'MIX:Mixer', 'DSH:Dishwasher', 'STV:Stove/Range', 'BLN:Blender'] },
@@ -22,9 +21,6 @@ export const CATEGORIES = [
 ];
 
 export const SENSITIVE_CATS = ['ITE', 'SEC', 'PNM', 'ENG'];
-
-// Who the asset is the property of (ownership) — not the hotel name.
-export const PROPERTIES = ['Centre Point', 'Hariganga'];
 
 export const DEPARTMENTS = [
   'Front Office', 'Housekeeping', 'Food & Beverage', 'Kitchen', 'Engineering',
